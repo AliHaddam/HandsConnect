@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .card {
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo {
+            width: 80px;
+            display: block;
+            margin: 0 auto 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card p-4 shadow">
+    <img src="logo.jpg" alt="Logo" class="logo">
+    <h4 class="text-center">Login</h4>
+
+    <form id="loginForm">
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
+            <div class="text-danger small" id="emailError"></div>
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+            <div class="text-danger small" id="passwordError"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Login</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById("loginForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        let email = document.getElementById("email").value.trim();
+        let password = document.getElementById("password").value;
+
+        let emailError = document.getElementById("emailError");
+        let passwordError = document.getElementById("passwordError");
+
+        emailError.textContent = "";
+        passwordError.textContent = "";
+
+        let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if (!emailPattern.test(email)) {
+            emailError.textContent = "Invalid email format (user@domain.com)";
+            return;
+        }
+
+        if (password.length < 8) {
+            passwordError.textContent = "Password must be at least 8 characters.";
+            return;
+        }
+
+        alert("Login Successful! (Modify to check database later)");
+    });
+</script>
+
+</body>
+</html>
