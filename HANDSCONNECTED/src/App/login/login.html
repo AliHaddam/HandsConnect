@@ -28,13 +28,19 @@
             display: block;
             margin: 0 auto 10px;
         }
+
+        .error-message {
+            color: red;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
 
     <!-- Login Form -->
     <div class="card p-4 shadow">
-        <img src="../../../logo-HandsConnect.png" alt="Logo" class="logo">
+        <img src="../logo-HandsConnect.png" alt="Logo" class="logo">
         <h4 class="text-center">Login</h4>
 
         <form id="loginForm">
@@ -42,14 +48,14 @@
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
-                <div class="text-danger small" id="emailError"></div>
+                <div class="error-message" id="emailError"></div>
             </div>
 
             <!-- Password Field -->
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
                 <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-                <div class="text-danger small" id="passwordError"></div>
+                <div class="error-message" id="passwordError"></div>
             </div>
 
             <!-- Submit Button -->
@@ -84,15 +90,25 @@
                 return;
             }
 
-            // Simulate successful login (Replace this with actual backend API call later)
-            let loginSuccessful = true;
-
-            if (loginSuccessful) {
-                // Redirect to the dashboard page
-                window.location.href = './dashboard.html';
-            } else {
-                passwordError.textContent = "Invalid email or password.";
-            }
+            // Send login data to the backend API
+            fetch('http://localhost:3000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Invalid email or password.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);  // Show success message
+                window.location.href = './dashboard.html';  // Redirect to dashboard
+            })
+            .catch(error => {
+                emailError.textContent = error.message;
+            });
         });
     </script>
 
