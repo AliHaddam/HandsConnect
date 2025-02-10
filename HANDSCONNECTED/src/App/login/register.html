@@ -113,9 +113,23 @@
 
         });
         document.getElementById("registrationForm").addEventListener("submit", function(event) {
-                    event.preventDefault();
-                    let email = document.getElementById("email").value;
-                    alert("A verification email has been sent to " + email);
+            event.preventDefault();
+            let email = document.getElementById("email").value;
+            alert("A verification email has been sent to " + email);
+
+            const formData = new FormData(this);
+            fetch('send_verification.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    alert("Error: " + error);
+                });
+        });
     </script>
 </body>
 
