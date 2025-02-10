@@ -11,6 +11,12 @@ CREATE TABLE Volunteers (
     email_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE volunteer_skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    volunteer_id INTEGER NOT NULL,
+    skill TEXT NOT NULL,
+    FOREIGN KEY (volunteer_id) REFERENCES volunteers(id) ON DELETE CASCADE
+);
 
 CREATE TABLE NGOs (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -24,10 +30,4 @@ CREATE TABLE NGOs (
     logo VARCHAR(255),
     email_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE volunteer_skills (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    volunteer_id INTEGER NOT NULL,
-    skill TEXT NOT NULL,
-    FOREIGN KEY (volunteer_id) REFERENCES volunteers(id) ON DELETE CASCADE
 );
