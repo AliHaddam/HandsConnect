@@ -32,6 +32,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         echo json_encode(["status" => "fail", "message" => "Missing required fields"]);
         exit();
     }
+ $role = $conn->real_escape_string($_POST['role']);
+    $fullName = $conn->real_escape_string($_POST['full_name']);
+    $email = $conn->real_escape_string($_POST['email']);
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $verificationCode = rand(100000, 999999);
 
+    if ($role === "volunteer") {
+        $dob = $conn->real_escape_string($_POST['dob'] ?? '');
+        $location = $conn->real_escape_string($_POST['location'] ?? '');
+        $skills = $conn->real_escape_string($_POST['skills'] ?? '');
+        $reason = $conn->real_escape_string($_POST['reason'] ?? '');
+        // $profilePic = $conn->real_escape_string($_POST['profile_picture'] ?? '');
+
+        $stmt = $conn->prepare("INSERT INTO Volunteers (full_name, email, password, date_of_birth, location, skills, reason, profile_picture, verification_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssssss", $fullName, $email, $password, $dob, $location, $skills, $reason, $profilePic, $verificationCode);
+    } elseif ($role === "ngo") {
+        $ngoName = $conn->real_escape_string($_POST['ngo_name'] ?? '');
+        $ngoDescription = $conn->real_escape_string($_POST['ngo_description'] ?? '');
+        $website = $conn->real_escape_string($_POST['ngo_website'] ?? '');
+        $ngoLocation = $conn->real_escape_string($_POST['ngo_location'] ?? '');
+        // $logo = $conn->real_escape_string($_POST['ngo_logo'] ?? '');
+
+        $stmt = $conn->prepare("INSERT INTO ngo_representatives (full_name, ngo_name, ngo_email, password, ngo_description, website, location, ngo_logo, verification_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssssss", $fullName, $ngoName, $email, $password, $ngoDescription, $website, $ngoLocation, $logo, $verificationCode);
+    } else {
+        echo json_encode(["status" => "fail", "message" => "Invalid role"]);
+        exit();
+    }
+
+
+    if ($stmt->execute()) {
+        $response = [
+            "status" => "success",
+            "message" => "Hello $fullName, your email is $email. A verification email will be sent."
+        ];
+    } else {
+        $response = [
+            "status" => "fail",
+            "message" => "Database error: " . $stmt->error
+        ];
+    }
+
+
+    $stmt->close();
+    $conn->close();
+
+    echo json_encode($response);
 }
 ?>
