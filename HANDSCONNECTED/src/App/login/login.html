@@ -111,8 +111,14 @@
                     return response.json();
                 })
                 .then(data => {
-                    alert(data.message);  // Show success message
-                    window.location.href = './dashboard.html';  // Redirect to dashboard
+                    // Store token in Local Storage
+                    localStorage.setItem("authToken", data.token);
+
+                    // Show a subtle confirmation message
+                    alert("Login successful! Redirecting to dashboard...");
+
+                    // Redirect to dashboard
+                    window.location.href = './dashboard.html';
                 })
                 .catch(error => {
                     emailError.textContent = error.message;

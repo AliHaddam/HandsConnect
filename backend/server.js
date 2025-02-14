@@ -1,8 +1,9 @@
+require('dotenv').config();
+console.log("JWT Secret:", process.env.JWT_SECRET);
+
+const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
-
-//IMP NOTE: The backend now limits CORS to requests from http://localhost:3000. 
-//Modify this if you deploy your frontend to a different URL.
 
 const app = express();
 
@@ -17,9 +18,27 @@ app.use(cors());  // Allow requests from any origin
 // Simulated user data (replace with a real database later)
 const users = [{ email: 'user@domain.com', password: 'password123' }];
 
-// Login Route
+//This will ensure protected routes require authentication.
+
+function authenticateToken(req, res, next) {
+    const token = req.headers['authorization']; // Get token from headers
+
+    if (!token) {
+        return res.status(401).json({ error: "Access denied. No token provided." });
+    }
+
+    jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).json({ error: "Invalid or expired token." });
+        }
+        req.user = decoded; // Store decoded user info for later use
+        next();
+    });
+}
+
+// 🔹 Login Route
 app.post('/api/login', (req, res) => {
-    console.log("Login request received:", req.body); // Log the request data
+    console.log("Login request received:", req.body);
 
     const { email, password } = req.body;
 
@@ -27,15 +46,27 @@ app.post('/api/login', (req, res) => {
     const user = users.find(u => u.email === email && u.password === password);
 
     if (user) {
-        console.log("✅ Login successful for:", email); // Log success
-        res.json({ message: 'Login successful!', token: 'fake-jwt-token' });
+        // Generate a JWT token
+        const token = jwt.sign(
+            { id: user.id, email: user.email }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
+
+        console.log("✅ Login successful for:", email); 
+        res.json({ message: 'Login successful!', token }); // Send the token to the frontend
     } else {
-        console.log("❌ Login failed for:", email); // Log failure
+        console.log("❌ Login failed for:", email); 
         res.status(401).json({ error: 'Invalid email or password' });
     }
 });
 
-// Test route for server health check
+// 🔹 Protected Route (Example)
+app.get('/api/protected', authenticateToken, (req, res) => {
+    res.json({ message: "Access granted to protected resource", user: req.user });
+});
+
+// 🔹 Test route for server health check
 app.get('/', (req, res) => {
     res.send('Server is running!');
 });

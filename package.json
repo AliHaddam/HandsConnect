@@ -18,7 +18,10 @@
   },
   "homepage": "https://github.com/ouss202/HandsConnect#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.0",
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
   }
 }
