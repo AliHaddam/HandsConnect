@@ -3,89 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login</title>
+    <title>Login - HANDSCONNECT</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        body {
-            background-color: #f8f9fa;
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(white, #41d6d4);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            width: 100%;
+            padding-bottom: 40px;
         }
         .card {
-            max-width: 400px;
+            max-width: 380px;
             width: 100%;
+            padding: 30px;
+            border-radius: 15px;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .logo {
-            width: 80px;
-            display: block;
-            margin: 0 auto 10px;
+            width: 200px;
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: bold;
+            color: black;
+            text-align: left;
+        }
+        .form-control {
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            color: black;
+        }
+        .btn-primary {
+            background-color: #41d6d4;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+        }
+        .btn-primary:hover {
+            background-color: #36b3b0;
+        }
+        .text-center a {
+            color: #41d6d4;
+            text-decoration: none;
+        }
+        .text-center a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
+    <div class="content-wrapper">
+        <img src="../../../logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
+        <h2>Welcome Back to HANDSCONNECT</h2>
+        <p>Sign in to continue your journey.</p>
 
-<div class="card p-4 shadow">
-    <img src="../../../logo-HandsConnect.png" alt="Logo" class="logo">
-    <h4 class="text-center">Login</h4>
+        <div class="card shadow-lg">
+            <h4 class="text-center">Login</h4>
+            
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
+                    <div class="text-danger small" id="emailError"></div>
+                </div>
 
-    <form id="loginForm">
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" placeholder="user@domain.com" required>
-            <div class="text-danger small" id="emailError"></div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                    <div class="text-danger small" id="passwordError"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Login</button>
+
+                <div class="text-center mt-3">
+                    <a href="forgot-password.html" class="btn btn-link">Forgot Password?</a>
+                </div>
+
+                <div class="text-center mt-2">
+                    <span>Don't have an account? <a href="register.html">Sign Up</a></span>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
-            <div class="text-danger small" id="passwordError"></div>
-        </div>
-
-        <button type="submit" class="btn btn-primary w-100">Login</button>
-
-        <div class="text-center mt-3">
-            <a href="forgot-password.html" class="btn btn-link">Forgot Password?</a>
-        </div>
-
-        <div class="text-center mt-2">
-            <span>Don't have an account? <a href="register.html">Sign Up</a></span>
-        </div>
-    </form>
-</div>
-
-<script>
-    document.getElementById("loginForm").addEventListener("submit", function(event) {
-        event.preventDefault();
-
-        let email = document.getElementById("email").value.trim();
-        let password = document.getElementById("password").value;
-
-        let emailError = document.getElementById("emailError");
-        let passwordError = document.getElementById("passwordError");
-
-        emailError.textContent = "";
-        passwordError.textContent = "";
-
-        let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-        if (!emailPattern.test(email)) {
-            emailError.textContent = "Invalid email format (user@domain.com)";
-            return;
-        }
-
-        if (password.length < 8) {
-            passwordError.textContent = "Password must be at least 8 characters.";
-            return;
-        }
-
-        alert("Login Successful! (Modify to check database later)");
-    });
-</script>
-
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let email = document.getElementById("email").value.trim();
+            let password = document.getElementById("password").value;
+            let emailError = document.getElementById("emailError");
+            let passwordError = document.getElementById("passwordError");
+            emailError.textContent = "";
+            passwordError.textContent = "";
+            let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailPattern.test(email)) {
+                emailError.textContent = "Invalid email format (user@domain.com)";
+                return;
+            }
+            if (password.length < 8) {
+                passwordError.textContent = "Password must be at least 8 characters.";
+                return;
+            }
+            alert("Login Successful! (Modify to check database later)");
+        });
+    </script>
 </body>
 </html>
