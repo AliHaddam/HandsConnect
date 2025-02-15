@@ -100,12 +100,21 @@
         .btn-success:hover {
             background-color: #218838;
         }
-        /* Alignment for form fields */
         .form-group {
             margin-bottom: 20px;
         }
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
+        }
+        .password-eye {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .form-control-wrapper {
+            position: relative;
         }
     </style>
 </head>
@@ -135,7 +144,12 @@
                 <label class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" required>
                 <label class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" required>
+                <div class="form-control-wrapper">
+                    <input type="password" class="form-control" id="password" required>
+                    <span class="password-eye" onclick="togglePasswordVisibility()">👁️</span>
+                </div>
+                <label class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirmPassword" required>
                 <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(1)">Back</button>
                 <button type="button" class="btn btn-primary w-100 mt-3" onclick="nextStage(3)">Next</button>
             </div>
@@ -143,18 +157,18 @@
             <div id="stage3" class="stage">
                 <div id="volunteerFields">
                     <label class="form-label">Date of Birth</label>
-                    <input type="date" class="form-control">
+                    <input type="date" class="form-control" id="dob" onchange="validateFields()">
                     <label class="form-label">City/Location</label>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" id="location" onchange="validateFields()">
                 </div>
                 <div id="ngoFields">
                     <label class="form-label">NGO Name</label>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" id="ngoName">
                     <label class="form-label">NGO Description</label>
-                    <textarea class="form-control"></textarea>
+                    <textarea class="form-control" id="ngoDescription"></textarea>
                 </div>
                 <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(2)">Back</button>
-                <button type="submit" class="btn btn-success w-100 mt-3">Register</button>
+                <button type="submit" class="btn btn-success w-100 mt-3" id="registerBtn" disabled>Register</button>
             </div>
         </form>
     </div>
@@ -165,7 +179,6 @@
     </div>
     
     <script>
-        // Smooth scroll-up effect when scrolling down
         window.addEventListener('scroll', function() {
             const infoSection = document.getElementById('infoSection');
             if (window.scrollY > 100) {
@@ -181,6 +194,17 @@
                     input.reportValidity();
                 }
             });
+
+            // Check if passwords match on stage 2
+            if (stage === 3) {
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                if (password !== confirmPassword) {
+                    valid = false;
+                    alert("Passwords do not match!");
+                }
+            }
+
             if (!valid) return;
             
             document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
@@ -192,6 +216,87 @@
         function prevStage(stage) {
             document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
             document.getElementById('stage' + stage).classList.add('active');
+        }
+
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('password');
+            const confirmPasswordField = document.getElementById('confirmPassword');
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                confirmPasswordField.type = "text";
+            } else {
+                passwordField.type = "password";
+                confirmPasswordField.type = "password";
+            }
+        }
+
+        function validateFields() {
+            const dob = document.getElementById("dob").value;
+            const location = document.getElementById("location").value;
+            const registerBtn = document.getElementById("registerBtn");
+
+            if (dob && location) {
+                registerBtn.disabled = false;
+            } else {
+                registerBtn.disabled = true;
+            }
+        }
+
+        document.getElementById("registrationForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            let email = document.getElementById("email").value;
+            alert("A verification email has been sent to " + email);
+
+            const formData = new FormData(this);
+
+            if (validateForm()) {
+                fetch('send_verification.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    alert("Error: " + error);
+                });
+            }
+        });
+
+        function validateForm() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const role = document.getElementById("role").value;
+            const name = document.getElementById("name").value;
+            const dob = document.getElementById("dob").value;
+            const location = document.getElementById("location").value;
+            const ngoName = document.getElementById("ngoName").value;
+            const ngoDescription = document.getElementById("ngoDescription").value;
+
+            if (name === "" || email === "" || password === "" || confirmPassword === "") {
+                alert("All fields are required.");
+                return false;
+            }
+
+            if (password !== confirmPassword) {
+                alert("Passwords do not match.");
+                return false;
+            }
+
+            if (role === "volunteer" && (dob === "" || location === "")) {
+                alert("Please fill in your birthdate and location.");
+                return false;
+            }
+
+            if (role === "ngo" && (ngoName === "" || ngoDescription === "")) {
+                alert("Please fill in your NGO's name and description.");
+                return false;
+            }
+
+            return true;
         }
     </script>
 </body>

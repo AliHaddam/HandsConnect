@@ -17,9 +17,18 @@
     "url": "https://github.com/ouss202/HandsConnect/issues"
   },
   "homepage": "https://github.com/ouss202/HandsConnect#readme",
+<<<<<<< HEAD
   "devDependencies": {
     "@eslint/js": "^9.20.0",
     "eslint": "^9.20.1",
     "globals": "^15.15.0"
+=======
+  "dependencies": {
+    "bcryptjs": "^3.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+>>>>>>> 4b9d6f30d917a5d8f350c3183fb27f3f2791c44d
   }
 }

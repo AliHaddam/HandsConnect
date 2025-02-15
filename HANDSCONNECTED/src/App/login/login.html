@@ -75,7 +75,7 @@
 </head>
 <body>
     <div class="content-wrapper">
-        <img src="../../../logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
+        <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
         <h2>Welcome Back to HANDSCONNECT</h2>
         <p>Sign in to continue your journey.</p>
 
@@ -126,7 +126,25 @@
                 passwordError.textContent = "Password must be at least 8 characters.";
                 return;
             }
-            alert("Login Successful! (Modify to check database later)");
+            fetch('http://localhost:3000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Invalid email or password.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                localStorage.setItem("authToken", data.token);
+                alert("Login successful! Redirecting to dashboard...");
+                window.location.href = './dashboard.html';
+            })
+            .catch(error => {
+                emailError.textContent = error.message;
+            });
         });
     </script>
 </body>
