@@ -11,7 +11,6 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -41,6 +40,8 @@ CREATE TABLE IF NOT EXISTS `ngo_representatives` (
   `email_verified` tinyint(1) DEFAULT '0',
   `verification_code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `reset_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reset_token_expiration` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ngo_email` (`ngo_email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -49,8 +50,8 @@ CREATE TABLE IF NOT EXISTS `ngo_representatives` (
 -- Dumping data for table `ngo_representatives`
 --
 
-INSERT INTO `ngo_representatives` (`id`, `full_name`, `ngo_name`, `ngo_email`, `password`, `ngo_description`, `website`, `location`, `ngo_logo`, `email_verified`, `verification_code`, `created_at`) VALUES
-(1, 'Walid Allaw', 'NGO', 'walidallaw@gmail.com', '$2y$10$xtIf9fwdHcce.zlpbgy11OhflV5mnqIq8uUNo0/VBcJMySbjxTp/S', '', 'http://NGO.com', 'SADAS', NULL, 0, '883309', '2025-02-10 19:30:31');
+INSERT INTO `ngo_representatives` (`id`, `full_name`, `ngo_name`, `ngo_email`, `password`, `ngo_description`, `website`, `location`, `ngo_logo`, `email_verified`, `verification_code`, `created_at`, `reset_token`, `reset_token_expiration`) VALUES
+(1, 'Walid Allaw', 'NGO', 'walidallaw@gmail.com', '$2y$10$xtIf9fwdHcce.zlpbgy11OhflV5mnqIq8uUNo0/VBcJMySbjxTp/S', '', 'http://NGO.com', 'SADAS', NULL, 0, '883309', '2025-02-10 19:30:31', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -72,6 +73,8 @@ CREATE TABLE IF NOT EXISTS `volunteers` (
   `email_verified` tinyint(1) DEFAULT '0',
   `verification_code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `reset_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reset_token_expiration` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -80,8 +83,9 @@ CREATE TABLE IF NOT EXISTS `volunteers` (
 -- Dumping data for table `volunteers`
 --
 
-INSERT INTO `volunteers` (`id`, `full_name`, `email`, `password`, `date_of_birth`, `location`, `skills`, `reason`, `profile_picture`, `email_verified`, `verification_code`, `created_at`) VALUES
-(1, 'Walid Allaw', 'walidallaw@gmail.com', '$2y$10$0JdCv3BKX90EECfntA8d3O1n/v/dGz6O83I7eGdIjV8seNmisbBBa', '0000-00-00', 'Beirut', 'sa', '', NULL, 0, '143769', '2025-02-10 19:22:31');
+INSERT INTO `volunteers` (`id`, `full_name`, `email`, `password`, `date_of_birth`, `location`, `skills`, `reason`, `profile_picture`, `email_verified`, `verification_code`, `created_at`, `reset_token`, `reset_token_expiration`) VALUES
+(1, 'Walid Allaw', 'walidallaw@gmail.com', '$2y$10$0JdCv3BKX90EECfntA8d3O1n/v/dGz6O83I7eGdIjV8seNmisbBBa', '0000-00-00', 'Beirut', 'sa', '', NULL, 0, '143769', '2025-02-10 19:22:31', NULL, NULL);
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
