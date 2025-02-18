@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `ngo_representatives` (
 --
 
 INSERT INTO `ngo_representatives` (`id`, `full_name`, `ngo_name`, `ngo_email`, `password`, `ngo_description`, `website`, `location`, `ngo_logo`, `email_verified`, `verification_code`, `created_at`, `reset_token`, `reset_token_expiration`) VALUES
-(1, 'Walid Allaw', 'NGO', 'walidallaw@gmail.com', '$2y$10$xtIf9fwdHcce.zlpbgy11OhflV5mnqIq8uUNo0/VBcJMySbjxTp/S', '', 'http://NGO.com', 'SADAS', NULL, 0, '883309', '2025-02-10 19:30:31', NULL, NULL);
+(1, 'Mohammad Kassem', 'NGO', 'mohammad15kassem@gmail.com', '$2y$10$xtIf9fwdHcce.zlpbgy11OhflV5mnqIq8uUNo0/VBcJMySbjxTp/S', '', 'http://NGO.com', 'SADAS', NULL, 0, '883309', '2025-02-10 19:30:31', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS `volunteers` (
 --
 
 INSERT INTO `volunteers` (`id`, `full_name`, `email`, `password`, `date_of_birth`, `location`, `skills`, `reason`, `profile_picture`, `email_verified`, `verification_code`, `created_at`, `reset_token`, `reset_token_expiration`) VALUES
-(1, 'Walid Allaw', 'walidallaw@gmail.com', '$2y$10$0JdCv3BKX90EECfntA8d3O1n/v/dGz6O83I7eGdIjV8seNmisbBBa', '0000-00-00', 'Beirut', 'sa', '', NULL, 0, '143769', '2025-02-10 19:22:31', NULL, NULL);
+(1, 'Mohammad Kassem', 'mohammad15kassem@gmail.com', '$2y$10$0JdCv3BKX90EECfntA8d3O1n/v/dGz6O83I7eGdIjV8seNmisbBBa', '0000-00-00', 'Beirut', 'sa', '', NULL, 0, '143769', '2025-02-10 19:22:31', NULL, NULL);
 
 COMMIT;
 
