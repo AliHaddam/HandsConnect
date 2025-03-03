@@ -98,6 +98,33 @@ app.get('/api/opportunities', (req, res) => {
     });
 });
 
+// 🔹 DELETE a volunteer opportunity by ID
+app.delete('/api/opportunities/:id', (req, res) => {
+    const { id } = req.params;
+
+    // First, check if the opportunity exists
+    db.query("SELECT * FROM opportunities WHERE id = ?", [id], (err, results) => {
+        if (err) {
+            console.error("❌ Error finding opportunity:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Opportunity not found." });
+        }
+
+        // If it exists, proceed with deletion
+        db.query("DELETE FROM opportunities WHERE id = ?", [id], (deleteErr) => {
+            if (deleteErr) {
+                console.error("❌ Error deleting opportunity:", deleteErr);
+                return res.status(500).json({ error: "Failed to delete opportunity." });
+            }
+            console.log(`✅ Opportunity deleted: ID ${id}`);
+            res.json({ message: "Opportunity deleted successfully!" });
+        });
+    });
+});
+
 // 🔹 File Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) {

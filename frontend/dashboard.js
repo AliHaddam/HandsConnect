@@ -17,7 +17,10 @@ if (!token) {
             window.location.href = "login.html";
         } else {
             document.addEventListener("DOMContentLoaded", function () {
-                document.getElementById("userEmail").textContent = payload.email;
+                const userEmail = document.getElementById("userEmail");
+                if (userEmail) {
+                    userEmail.textContent = payload.email;
+                }
             });
         }
     } catch (error) {
@@ -40,15 +43,21 @@ function loadOpportunities() {
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById("opportunitiesList");
-            list.innerHTML = ""; 
+            list.innerHTML = "";
 
             if (data.length === 0) {
                 list.innerHTML = "<li class='list-group-item'>No opportunities available.</li>";
             } else {
                 data.forEach(opportunity => {
                     const listItem = document.createElement("li");
-                    listItem.classList.add("list-group-item");
-                    listItem.textContent = `${opportunity.title} - ${new Date(opportunity.date).toDateString()} - ${opportunity.location}`;
+                    listItem.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
+
+                    // Opportunity details
+                    listItem.innerHTML = `
+                        <span>${opportunity.title} - ${new Date(opportunity.date).toDateString()} - ${opportunity.location}</span>
+                        <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.id})">Delete</button>
+                    `;
+
                     list.appendChild(listItem);
                 });
             }
@@ -56,6 +65,19 @@ function loadOpportunities() {
         .catch(error => {
             console.error("Error fetching opportunities:", error);
         });
+}
+
+// Delete an opportunity
+function deleteOpportunity(id) {
+    if (!confirm("Are you sure you want to delete this opportunity?")) return;
+
+    fetch(`http://localhost:3000/api/opportunities/${id}`, { method: "DELETE" })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            loadOpportunities(); // Refresh the list
+        })
+        .catch(error => console.error("Error deleting opportunity:", error));
 }
 
 // Upload file
@@ -78,7 +100,7 @@ function uploadFile() {
         alert(data.message);
         document.getElementById("uploadStatus").innerText = `File uploaded: ${data.filename}`;
         fileInput.value = "";
-        fetchFiles(); 
+        fetchFiles();
     })
     .catch(error => console.error("Error uploading file:", error));
 }
@@ -89,7 +111,7 @@ function fetchFiles() {
         .then(response => response.json())
         .then(files => {
             const fileList = document.getElementById("fileList");
-            fileList.innerHTML = ""; 
+            fileList.innerHTML = "";
 
             if (files.length === 0) {
                 fileList.innerHTML = "<li class='list-group-item'>No uploaded files.</li>";
@@ -120,6 +142,23 @@ function deleteFile(filename) {
             fetchFiles();
         })
         .catch(error => console.error("Error deleting file:", error));
+}
+
+// Function to handle preview
+function showPreview() {
+    const title = document.getElementById("title").value;
+    const description = document.getElementById("description").value;
+    const date = document.getElementById("date").value;
+    const location = document.getElementById("location").value;
+
+    if (!title || !description || !date || !location) {
+        alert("Please fill in all fields before previewing.");
+        return;
+    }
+
+    localStorage.setItem("opportunityPreview", JSON.stringify({ title, description, date, location }));
+
+    window.location.href = "preview.html";
 }
 
 // Load data when the page loads
