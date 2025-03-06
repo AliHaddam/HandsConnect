@@ -1,4 +1,4 @@
- document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener("DOMContentLoaded", async function () {
     const editButton = document.getElementById("edit-btn");
     const nameField = document.getElementById("name");
     const emailField = document.getElementById("email");
@@ -52,7 +52,8 @@
             email: newEmail,
             phone: newPhone,
             skills: newSkills.split(",").map(skill => skill.trim()),
-            experiences: newExperiences.split(",").map(exp => exp.trim())
+            experiences: newExperiences.split(",").map(exp => exp.trim()),
+            imageUrl: profilePicture.src // Store the image URL as well
         };
 
         await fetch("http://localhost:5000/update-profile", {
@@ -61,8 +62,8 @@
             body: JSON.stringify(updatedProfile)
         });
 
-        fetchProfile();
+        fetchProfile(); // Refresh the profile after updating
     });
 
-    fetchProfile();
-});  
+    fetchProfile(); // Fetch profile when page loads
+});

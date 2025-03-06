@@ -4,10 +4,10 @@ console.log("JWT Secret:", process.env.JWT_SECRET);
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // 🔹 Import the MySQL connection from db.js
-const multer = require('multer'); // 🔹 Import Multer for file uploads
+const db = require('./db'); // ✅ Import the MySQL connection from db.js
+const multer = require('multer'); // ✅ Import Multer for file uploads
 const path = require('path');
-const fs = require('fs'); // 🔹 Import File System module for handling file operations
+const fs = require('fs'); // ✅ Import File System module for handling file operations
 
 const app = express(); // Initialize Express
 app.use('/uploads', express.static('uploads'));
@@ -16,20 +16,7 @@ app.use('/uploads', express.static('uploads'));
 app.use(express.json());
 app.use(cors());
 
-// 🔹 Configure storage for uploaded files
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Save files in the 'uploads' folder
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
-    }
-});
-
-// 🔹 Initialize multer with the storage settings
-const upload = multer({ storage: storage });
-
-// 🔹 Ensure users are authenticated
+// ✅ Ensure users are authenticated
 function authenticateToken(req, res, next) {
     const token = req.headers['authorization'];
 
@@ -46,7 +33,7 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// 🔹 Login Route (Dummy authentication for now)
+// ✅ Login Route (Dummy authentication for now)
 app.post('/api/login', (req, res) => {
     console.log("Login request received:", req.body);
     const { email, password } = req.body;
@@ -68,37 +55,74 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// 🔹 Store opportunities in MySQL instead of memory
-app.post('/api/opportunities', (req, res) => {
+// ✅ Store opportunities in MySQL instead of memory
+app.post('/api/opportunities', async (req, res) => {
     const { title, description, date, location } = req.body;
 
     if (!title || !description || !date || !location) {
         return res.status(400).json({ error: "All fields are required." });
     }
 
-    const query = "INSERT INTO opportunities (title, description, date, location) VALUES (?, ?, ?, ?)";
-    db.query(query, [title, description, date, location], (err, result) => {
-        if (err) {
-            console.error("❌ Error inserting opportunity:", err);
-            return res.status(500).json({ error: "Failed to submit opportunity." });
-        }
+    try {
+        const query = "INSERT INTO opportunities (title, description, date, location) VALUES (?, ?, ?, ?)";
+        const [result] = await db.execute(query, [title, description, date, location]);
+
         console.log("✅ Opportunity saved:", { id: result.insertId, title, description, date, location });
         res.status(201).json({ message: "Opportunity submitted successfully!", id: result.insertId });
-    });
+    } catch (err) {
+        console.error("❌ Error inserting opportunity:", err);
+        res.status(500).json({ error: "Failed to submit opportunity." });
+    }
 });
 
-// 🔹 Retrieve all opportunities from MySQL
-app.get('/api/opportunities', (req, res) => {
-    db.query("SELECT * FROM opportunities", (err, results) => {
-        if (err) {
-            console.error("❌ Error fetching opportunities:", err);
-            return res.status(500).json({ error: "Failed to fetch opportunities." });
-        }
+// ✅ Retrieve all opportunities from MySQL
+app.get('/api/opportunities', async (req, res) => {
+    try {
+        const [results] = await db.execute("SELECT * FROM opportunities");
         res.json(results);
-    });
+    } catch (err) {
+        console.error("❌ Error fetching opportunities:", err);
+        res.status(500).json({ error: "Failed to fetch opportunities." });
+    }
 });
 
-// 🔹 File Upload Route
+// ✅ DELETE a volunteer opportunity by ID
+app.delete('/api/opportunities/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // First, check if the opportunity exists
+        const [results] = await db.execute("SELECT * FROM opportunities WHERE id = ?", [id]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Opportunity not found." });
+        }
+
+        // If it exists, proceed with deletion
+        await db.execute("DELETE FROM opportunities WHERE id = ?", [id]);
+
+        console.log(`✅ Opportunity deleted: ID ${id}`);
+        res.json({ message: "Opportunity deleted successfully!" });
+
+    } catch (err) {
+        console.error("❌ Error deleting opportunity:", err);
+        res.status(500).json({ error: "Failed to delete opportunity." });
+    }
+});
+
+// ✅ Configure storage for uploaded files
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/'); // Save files in the 'uploads' folder
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+    }
+});
+
+const upload = multer({ storage: storage });
+
+// ✅ File Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded." });
@@ -108,7 +132,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     res.json({ message: "File uploaded successfully!", filename: req.file.filename });
 });
 
-// 🔹 Get a list of uploaded files
+// ✅ Get a list of uploaded files
 app.get('/api/files', (req, res) => {
     fs.readdir('uploads/', (err, files) => {
         if (err) {
@@ -119,7 +143,7 @@ app.get('/api/files', (req, res) => {
     });
 });
 
-// 🔹 Delete an uploaded file
+// ✅ Delete an uploaded file
 app.delete('/api/files/:filename', (req, res) => {
     const { filename } = req.params;
     const filePath = `uploads/${filename}`;
@@ -139,17 +163,17 @@ app.delete('/api/files/:filename', (req, res) => {
     }
 });
 
-// 🔹 Protected Route (Example)
+// ✅ Protected Route (Example)
 app.get('/api/protected', authenticateToken, (req, res) => {
     res.json({ message: "Access granted to protected resource", user: req.user });
 });
 
-// 🔹 Test route for server health check
+// ✅ Test route for server health check
 app.get('/', (req, res) => {
     res.send('Server is running!');
 });
 
-// Start the server
+// ✅ Start the server
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
