@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Volunteering Opportunity</title>
     <style>
-        body {
+            body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
@@ -72,60 +72,103 @@
 </head>
 <body>
 
-<div class="container">
-    <div class="header-logos">
-        <img src="logo-HandsConnect.png" alt="Main Organization Logo" class="logo">
-        <img src="ngo1.png" alt="NGO 1 Logo" class="ngo-logo">
-    </div>
-
-    <h1>Community Clean-Up Drive</h1>
-
-    <div class="section">
-        <h3>Description</h3>
-        <p>Join us in making our neighborhood cleaner and greener! Volunteers will help collect trash, plant trees, and raise awareness about environmental conservation.</p>
-    </div>
-
-    <div class="section">
-        <h3>Location</h3>
-        <p>Beirut Public Park, Downtown</p>
-    </div>
-
-    <div class="section">
-        <h3>Date & Time Commitment</h3>
-        <p><strong>Date:</strong> April 15, 2025</p>
-        <p><strong>Time:</strong> 9:00 AM - 2:00 PM</p>
-    </div>
-
-    <div class="section">
-        <h3>Required Skills</h3>
-        <ul>
-            <li>Teamwork</li>
-            <li>Physical Stamina</li>
-            <li>Passion for the Environment</li>
-        </ul>
-    </div>
-
-    <div class="section">
-        <h3>Contact Information</h3>
-        <p><strong>Coordinator:</strong> Sarah Al Haddad</p>
-        <p><strong>Email:</strong> <a href="mailto:sarah@example.org">sarah@example.org</a></p>
-        <p><strong>Phone:</strong> +961 76 123 456</p>
-    </div>
-
-    <div class="section">
-        <h3>Attachments & Links</h3>
-        <div class="attachment">
-            <img src="https://cdn-icons-png.flaticon.com/512/2991/2991101.png" alt="PDF">
-            <a href="cleanup_guide.pdf" download>Download Volunteer Guide (PDF)</a>
+    <div class="container">
+        <div class="header-logos">
+            <img src="logo-HandsConnect.png" alt="Main Organization Logo" class="logo">
+            <img id="ngo-logo" src="" alt="NGO Logo" class="ngo-logo">
         </div>
-        <div class="attachment">
-            <img src="https://cdn-icons-png.flaticon.com/512/281/281769.png" alt="Website">
-            <a href="https://volunteer-example.org" target="_blank">Visit Our Website</a>
+    
+        <h1 id="opportunity-title"></h1>
+    
+        <div class="section">
+            <h3>Description</h3>
+            <p id="opportunity-description"></p>
         </div>
+    
+        <div class="section">
+            <h3>Location</h3>
+            <p id="opportunity-location"></p>
+        </div>
+    
+        <div class="section">
+            <h3>Date & Time Commitment</h3>
+            <p id="opportunity-date"></p>
+            <p id="opportunity-time"></p>
+        </div>
+    
+        <div class="section">
+            <h3>Required Skills</h3>
+            <ul id="opportunity-skills"></ul>
+        </div>
+    
+        <div class="section">
+            <h3>Contact Information</h3>
+            <p><strong>Coordinator:</strong> <span id="coordinator-name"></span></p>
+            <p><strong>Email:</strong> <a id="coordinator-email" href="#"></a></p>
+            <p><strong>Phone:</strong> <span id="coordinator-phone"></span></p>
+        </div>        
+    
+        <div class="section">
+            <h3>Attachments & Links</h3>
+            <div class="attachment">
+                <img src="https://cdn-icons-png.flaticon.com/512/2991/2991101.png" alt="PDF">
+                <a href="#" id="opportunity-guide" download>Download Volunteer Guide (PDF)</a>
+            </div>
+            <div class="attachment">
+                <img src="https://cdn-icons-png.flaticon.com/512/281/281769.png" alt="Website">
+                <a href="#" id="opportunity-website" target="_blank">Visit Our Website</a>
+            </div>
+        </div>
+    
+        <a href="#" class="apply-button">Apply Now</a>
     </div>
-
-    <a href="#" class="apply-button">Apply Now</a>
-</div>
-
-</body>
-</html>
+    
+    <script>
+    function fetchOpportunity(id) {
+        fetch(`http://localhost:3000/api/opportunities/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('opportunity-title').textContent = data.title;
+                document.getElementById('opportunity-description').textContent = data.description;
+                document.getElementById('opportunity-location').textContent = data.location;
+                document.getElementById('opportunity-date').textContent = `Date: ${data.date}`;
+                document.getElementById('opportunity-time').textContent = `Time: 9:00 AM - 2:00 PM`; // Replace with actual data if available
+    
+                // Update skills
+                const skillsList = document.getElementById('opportunity-skills');
+                skillsList.innerHTML = ''; 
+                data.skills.split(',').forEach(skill => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = skill.trim();
+                    skillsList.appendChild(listItem);
+                });
+    
+                // Update coordinator details
+                document.getElementById('coordinator-name').textContent = data.coordinator_name;
+                document.getElementById('coordinator-email').textContent = data.coordinator_email;
+                document.getElementById('coordinator-email').href = `mailto:${data.coordinator_email}`;
+                document.getElementById('coordinator-phone').textContent = data.coordinator_phone;
+    
+                // Update attachments and website link
+                document.getElementById('opportunity-guide').href = data.guide_link || '#';
+                document.getElementById('opportunity-website').href = data.website_link || '#';
+    
+                // Handle NGO logo
+                const ngoLogoElement = document.getElementById('ngo-logo');
+                if (data.logo_url) {
+                    ngoLogoElement.src = data.logo_url; 
+                    ngoLogoElement.style.display = 'block'; // Ensure it's visible if there is a logo
+                } else {
+                    ngoLogoElement.style.display = 'none'; // Hide it if there is no logo
+                }
+            })
+            .catch(error => console.error('Error fetching opportunity:', error));
+    }
+    
+    // Fetch the opportunity with ID = 1
+    fetchOpportunity(3);
+    
+        </script>
+    
+    </body>
+    </html>

@@ -61,25 +61,26 @@
                 <label class="form-label">Location</label>
                 <input type="text" class="form-control" id="location" required>
             </div>
+            <div class="mb-3">
+                <label class="form-label">Coordinator Name</label>
+                <input type="text" class="form-control" id="coordinator_name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Coordinator Email</label>
+                <input type="email" class="form-control" id="coordinator_email" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Coordinator Phone</label>
+                <input type="tel" class="form-control" id="coordinator_phone" required>
+            </div>
             <button type="button" class="btn btn-info" id="previewBtn" onclick="showPreview()">Preview</button>
+            <button type="button" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
         </form>
     </div>
 
     <div class="dashboard-content">
         <h2 class="section-title">Upcoming Volunteer Events</h2>
         <ul class="list-group" id="opportunitiesList"></ul>
-    </div>
-
-    <div class="dashboard-content">
-        <h2 class="section-title">Upload a File</h2>
-        <input type="file" id="fileInput" class="form-control mb-2">
-        <button class="btn btn-primary" onclick="uploadFile()">Upload</button>
-        <p id="uploadStatus" class="text-success mt-2"></p>
-    </div>
-
-    <div class="dashboard-content">
-        <h2 class="section-title">Uploaded Files</h2>
-        <ul class="list-group" id="fileList"></ul>
     </div>
 
     <footer class="footer">
