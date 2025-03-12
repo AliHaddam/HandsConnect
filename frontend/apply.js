@@ -1,10 +1,11 @@
+/* eslint-disable no-unused-vars */
 
 function getOpportunityId() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get("opportunity_id");
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function() {
     const token = localStorage.getItem("authToken");
     if (!token) {
         alert("Session expired. Please log in again.");
@@ -14,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        document.getElementById("email").value = payload.email; 
+        document.getElementById("email").value = payload.email;
         document.getElementById("opportunityId").value = getOpportunityId();
     } catch (error) {
         console.error("Error decoding token:", error);
@@ -46,19 +47,19 @@ function applyForOpportunity() {
     const applicationData = { opportunity_id: opportunityId, full_name: fullName, email, phone };
 
     fetch("http://localhost:3000/api/applications", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(applicationData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        window.location.href = "index.html";
-    })
-    .catch(error => console.error("Error applying for opportunity:", error));
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(applicationData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = "index.html";
+        })
+        .catch(error => console.error("Error applying for opportunity:", error));
 }
 
 
