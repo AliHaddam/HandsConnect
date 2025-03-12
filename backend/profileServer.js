@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Fetch profile from the database
-app.get("/profile", async (req, res) => {
+app.get("/profile", async(req, res) => {
     try {
         const [rows] = await pool.query("SELECT * FROM volunteer_profiles LIMIT 1");
         if (rows.length > 0) {
@@ -44,7 +44,7 @@ app.get("/profile", async (req, res) => {
 });
 
 // Upload profile picture
-app.post("/upload-profile-picture", upload.single("profilePicture"), async (req, res) => {
+app.post("/upload-profile-picture", upload.single("profilePicture"), async(req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: "No file uploaded" });
     }
@@ -60,7 +60,7 @@ app.post("/upload-profile-picture", upload.single("profilePicture"), async (req,
 });
 
 // Update profile in the database or create a new profile if none exists
-app.post("/update-profile", async (req, res) => {
+app.post("/update-profile", async(req, res) => {
     const { id, name, email, phone, skills, experiences, imageUrl } = req.body;
 
     try {
@@ -70,15 +70,13 @@ app.post("/update-profile", async (req, res) => {
         if (existingProfile.length > 0) {
             // If the profile exists, update it
             await pool.query(
-                "UPDATE volunteer_profiles SET name = ?, email = ?, phone = ?, skills = ?, experiences = ?, imageUrl = ? WHERE id = ?",
-                [name, email, phone, skills.join(","), experiences.join(","), imageUrl, id]
+                "UPDATE volunteer_profiles SET name = ?, email = ?, phone = ?, skills = ?, experiences = ?, imageUrl = ? WHERE id = ?", [name, email, phone, skills.join(","), experiences.join(","), imageUrl, id]
             );
             res.json({ success: true, message: "Profile updated successfully!" });
         } else {
             // If the profile doesn't exist, create a new one
             await pool.query(
-                "INSERT INTO volunteer_profiles (id, name, email, phone, skills, experiences, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [id, name, email, phone, skills.join(","), experiences.join(","), imageUrl]
+                "INSERT INTO volunteer_profiles (id, name, email, phone, skills, experiences, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?)", [id, name, email, phone, skills.join(","), experiences.join(","), imageUrl]
             );
             res.json({ success: true, message: "Profile created successfully!" });
         }
