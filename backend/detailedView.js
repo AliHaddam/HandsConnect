@@ -46,7 +46,7 @@ app.post('/api/login', (req, res) => {
 });
 
 // Store opportunities in MySQL
-app.post('/api/opportunities', async (req, res) => {
+app.post('/api/opportunities', async(req, res) => {
     const { title, description, date, location } = req.body;
 
     if (!title || !description || !date || !location) {
@@ -64,7 +64,7 @@ app.post('/api/opportunities', async (req, res) => {
 });
 
 // Fetch all opportunities from MySQL
-app.get('/api/opportunities', async (req, res) => {
+app.get('/api/opportunities', async(req, res) => {
     try {
         const [results] = await db.execute("SELECT * FROM opportunities");
         res.json(results);
@@ -74,7 +74,7 @@ app.get('/api/opportunities', async (req, res) => {
 });
 
 // DELETE an opportunity
-app.delete('/api/opportunities/:id', async (req, res) => {
+app.delete('/api/opportunities/:id', async(req, res) => {
     const { id } = req.params;
 
     try {
