@@ -23,3 +23,45 @@ document.addEventListener("DOMContentLoaded", function () {
         window.location.href = "login.html";
     }
 });
+
+
+function applyForOpportunity() {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    const opportunityId = document.getElementById("opportunityId").value;
+    const fullName = document.getElementById("fullName").value;
+    const email = document.getElementById("email").value;
+    const phone = document.getElementById("phone").value;
+
+    if (!fullName || !email || !phone) {
+        alert("Please fill in all fields before applying.");
+        return;
+    }
+
+    const applicationData = { opportunity_id: opportunityId, full_name: fullName, email, phone };
+
+    fetch("http://localhost:3000/api/applications", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(applicationData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        window.location.href = "index.html";
+    })
+    .catch(error => console.error("Error applying for opportunity:", error));
+}
+
+
+function cancelApplication() {
+    window.location.href = "index.html";
+}
