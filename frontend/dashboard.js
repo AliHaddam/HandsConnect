@@ -58,7 +58,10 @@ function loadOpportunities(ngoId) {
                     listItem.innerHTML = `
                         <span>${opportunity.title} - ${new Date(opportunity.date).toDateString()} - ${opportunity.location}</span>
                         <span>Coordinator: ${opportunity.coordinator_name} (${opportunity.coordinator_email}, ${opportunity.coordinator_phone})</span>
-                        <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.id})">Delete</button>
+                        <div>
+                            <button class="btn btn-success btn-sm" onclick="redirectToApplyPage(${opportunity.id})">Apply</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.id})">Delete</button>
+                        </div>
                     `;
 
                     list.appendChild(listItem);
@@ -68,6 +71,11 @@ function loadOpportunities(ngoId) {
         .catch(error => {
             console.error("Error fetching opportunities:", error);
         });
+}
+
+// Redirect user to the apply page
+function redirectToApplyPage(opportunityId) {
+    window.location.href = `apply.html?opportunity_id=${opportunityId}`;
 }
 
 // Submit a new opportunity with NGO ID
