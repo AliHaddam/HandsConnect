@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 require('dotenv').config();
 console.log("JWT Secret:", process.env.JWT_SECRET);
 
@@ -42,21 +43,19 @@ app.post('/api/login', (req, res) => {
     const user = users.find(u => u.email === email && u.password === password);
 
     if (user) {
-        const token = jwt.sign(
-            { id: user.id, email: user.email }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: process.env.JWT_EXPIRES_IN }
+        const token = jwt.sign({ id: user.id, email: user.email },
+            process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN }
         );
-        console.log("✅ Login successful for:", email); 
+        console.log("✅ Login successful for:", email);
         res.json({ message: 'Login successful!', token });
     } else {
-        console.log("❌ Login failed for:", email); 
+        console.log("❌ Login failed for:", email);
         res.status(401).json({ error: 'Invalid email or password' });
     }
 });
 
 // ✅ Store opportunities in MySQL instead of memory
-app.post('/api/opportunities', async (req, res) => {
+app.post('/api/opportunities', async(req, res) => {
     const { title, description, date, location } = req.body;
 
     if (!title || !description || !date || !location) {
@@ -76,7 +75,7 @@ app.post('/api/opportunities', async (req, res) => {
 });
 
 // ✅ Retrieve all opportunities from MySQL
-app.get('/api/opportunities', async (req, res) => {
+app.get('/api/opportunities', async(req, res) => {
     try {
         const [results] = await db.execute("SELECT * FROM opportunities");
         res.json(results);
@@ -87,7 +86,7 @@ app.get('/api/opportunities', async (req, res) => {
 });
 
 // ✅ DELETE a volunteer opportunity by ID
-app.delete('/api/opportunities/:id', async (req, res) => {
+app.delete('/api/opportunities/:id', async(req, res) => {
     const { id } = req.params;
 
     try {
