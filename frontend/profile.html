@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Volunteer Profile - HANDSCONNECT</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="profileStyle.css"> <!-- Custom CSS -->
+</head>
+<body>
+    <div class="content-wrapper">
+        <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
+        <h2>Volunteer Profile</h2>
+        <p>Manage and update your profile details.</p>
+
+        <div class="card profile-card shadow-lg">
+            <div class="text-center">
+                <img id="profile-picture" src="default.jpg" alt="Profile Picture" class="profile-img">
+                <input type="file" id="upload-photo" class="form-control mt-2">
+            </div>
+
+            <div class="card-body">
+                <h4 id="name">John Doe</h4>
+                <p><strong>Email:</strong> <span id="email">johndoe@example.com</span></p>
+                <p><strong>Phone:</strong> <span id="phone">+123456789</span></p>
+
+                <h5 class="mt-3">Skills</h5>
+                <ul id="skills" class="list-group">
+                    <li class="list-group-item">Communication</li>
+                    <li class="list-group-item">Fundraising</li>
+                </ul>
+
+                <h5 class="mt-3">Past Experiences</h5>
+                <ul id="experiences" class="list-group">
+                    <li class="list-group-item">Community Cleanup</li>
+                    <li class="list-group-item">Teaching Kids</li>
+                </ul>
+                
+                <button id="edit-btn" class="btn btn-primary w-100 mt-3">Edit Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="profileEdit.js"></script>
+</body>
+</html>
