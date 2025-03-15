@@ -109,43 +109,48 @@
     </div>
 
     <script>
-        document.getElementById("loginForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            let email = document.getElementById("email").value.trim();
-            let password = document.getElementById("password").value;
-            let emailError = document.getElementById("emailError");
-            let passwordError = document.getElementById("passwordError");
-            emailError.textContent = "";
-            passwordError.textContent = "";
-            let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-            if (!emailPattern.test(email)) {
-                emailError.textContent = "Invalid email format (user@domain.com)";
-                return;
-            }
-            if (password.length < 8) {
-                passwordError.textContent = "Password must be at least 8 characters.";
-                return;
-            }
-            fetch('http://localhost:3000/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Invalid email or password.');
-                }
-                return response.json();
-            })
-            .then(data => {
-                localStorage.setItem("authToken", data.token);
-                alert("Login successful! Redirecting to dashboard...");
-                window.location.href = './dashboard.html';
-            })
-            .catch(error => {
-                emailError.textContent = error.message;
-            });
-        });
+       document.getElementById("loginForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    let email = document.getElementById("email").value.trim();
+    let password = document.getElementById("password").value;
+    let emailError = document.getElementById("emailError");
+    let passwordError = document.getElementById("passwordError");
+
+    emailError.textContent = "";
+    passwordError.textContent = "";
+
+    let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailPattern.test(email)) {
+        emailError.textContent = "Invalid email format (user@domain.com)";
+        return;
+    }
+    if (password.length < 8) {
+        passwordError.textContent = "Password must be at least 8 characters.";
+        return;
+    }
+
+    fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            emailError.textContent = data.error;
+            return;
+        }
+
+        localStorage.setItem("authToken", data.token);
+        alert("Login successful! Redirecting...");
+        window.location.href = data.redirect;
+    })
+    .catch(error => {
+        emailError.textContent = "Login failed. Try again.";
+    });
+});
+
     </script>
 </body>
 </html>

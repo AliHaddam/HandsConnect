@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
+
 // Check if the user has a valid token
 const token = localStorage.getItem("authToken");
 
@@ -18,12 +19,16 @@ if (!token) {
             localStorage.removeItem("authToken");
             window.location.href = "login.html";
         } else {
-            document.addEventListener("DOMContentLoaded", function() {
+            document.addEventListener("DOMContentLoaded", function () {
                 const userEmail = document.getElementById("userEmail");
                 if (userEmail) {
                     userEmail.textContent = payload.email;
                 }
-                loadOpportunities(payload.ngo_id); // Load only opportunities for this NGO
+
+                if (payload.role === "NGO_Representative") {
+                    loadOpportunities(payload.ngo_id); // Load opportunities for this NGO
+                }
+
                 fetchFiles();
             });
         }
@@ -56,13 +61,12 @@ function loadOpportunities(ngoId) {
                     const listItem = document.createElement("li");
                     listItem.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
 
-                    // Opportunity details
                     listItem.innerHTML = `
-                        <span>${opportunity.title} - ${new Date(opportunity.date).toDateString()} - ${opportunity.location}</span>
-                        <span>Coordinator: ${opportunity.coordinator_name} (${opportunity.coordinator_email}, ${opportunity.coordinator_phone})</span>
+                        <span>${opportunity.title} - ${new Date(opportunity.start_date).toDateString()} - ${opportunity.location}</span>
+                        <span>Capacity: ${opportunity.capacity}</span>
                         <div>
-                            <button class="btn btn-success btn-sm" onclick="redirectToApplyPage(${opportunity.id})">Apply</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.id})">Delete</button>
+                            <button class="btn btn-success btn-sm" onclick="redirectToApplyPage(${opportunity.opportunity_id})">Apply</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.opportunity_id})">Delete</button>
                         </div>
                     `;
 
@@ -84,13 +88,12 @@ function redirectToApplyPage(opportunityId) {
 function submitOpportunity() {
     const title = document.getElementById("title").value;
     const description = document.getElementById("description").value;
-    const date = document.getElementById("date").value;
+    const startDate = document.getElementById("start_date").value;
+    const endDate = document.getElementById("end_date").value;
     const location = document.getElementById("location").value;
-    const coordinatorName = document.getElementById("coordinatorName").value;
-    const coordinatorEmail = document.getElementById("coordinatorEmail").value;
-    const coordinatorPhone = document.getElementById("coordinatorPhone").value;
+    const capacity = document.getElementById("capacity").value;
 
-    if (!title || !description || !date || !location || !coordinatorName || !coordinatorEmail || !coordinatorPhone) {
+    if (!title || !description || !startDate || !endDate || !location || !capacity) {
         alert("Please fill in all fields before submitting.");
         return;
     }
@@ -106,7 +109,15 @@ function submitOpportunity() {
         const payload = JSON.parse(atob(token.split(".")[1]));
         const ngoId = payload.ngo_id; // Extract NGO ID from token
 
-        const opportunityData = { title, description, date, location, ngo_id: ngoId, coordinator_name: coordinatorName, coordinator_email: coordinatorEmail, coordinator_phone: coordinatorPhone };
+        const opportunityData = {
+            title,
+            description,
+            start_date: startDate,
+            end_date: endDate,
+            location,
+            capacity: parseInt(capacity),
+            ngo_id: ngoId
+        };
 
         fetch("http://localhost:3000/api/opportunities", {
                 method: "POST",
@@ -131,7 +142,7 @@ function submitOpportunity() {
 }
 
 // Delete an opportunity (only the NGO that created it can delete it)
-function deleteOpportunity(id) {
+function deleteOpportunity(opportunityId) {
     if (!confirm("Are you sure you want to delete this opportunity?")) return;
 
     const token = localStorage.getItem("authToken");
@@ -141,7 +152,7 @@ function deleteOpportunity(id) {
         return;
     }
 
-    fetch(`http://localhost:3000/api/opportunities/${id}`, {
+    fetch(`http://localhost:3000/api/opportunities/${opportunityId}`, {
             method: "DELETE",
             headers: {
                 "Authorization": `Bearer ${token}`
@@ -161,7 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("authToken");
     if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        loadOpportunities(payload.ngo_id);
+        if (payload.role === "NGO_Representative") {
+            loadOpportunities(payload.ngo_id);
+        }
     }
     fetchFiles();
 });

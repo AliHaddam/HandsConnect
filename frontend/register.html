@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +15,7 @@
             overflow-x: hidden;
             background: linear-gradient(white, #41d6d4);
         }
+
         .welcome-container {
             height: auto;
             display: flex;
@@ -22,6 +24,7 @@
             justify-content: center;
             text-align: center;
         }
+
         .info-section {
             color: white;
             padding: 80px 20px;
@@ -31,10 +34,12 @@
             transform: translateY(30px);
             transition: opacity 0.6s ease, transform 0.6s ease;
         }
+
         .info-section.visible {
             opacity: 1;
             transform: translateY(0);
         }
+
         .card {
             max-width: 380px;
             width: 100%;
@@ -45,21 +50,31 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: box-shadow 0.3s ease;
         }
+
         .card:hover {
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
+
         .logo {
             width: 500px;
             margin-bottom: 20px;
         }
-        .stage { display: none; }
-        .stage.active { display: block; }
+
+        .stage {
+            display: none;
+        }
+
+        .stage.active {
+            display: block;
+        }
+
         .form-label {
             font-weight: bold;
             margin-bottom: 8px;
             color: black;
             text-align: left;
         }
+
         .form-control {
             border-radius: 8px;
             padding: 10px;
@@ -68,44 +83,59 @@
             transition: border-color 0.3s ease;
             color: black;
         }
+
         .form-control:focus {
             border-color: #41d6d4;
             outline: none;
         }
-        .btn-primary, .btn-secondary, .btn-success {
+
+        .btn-primary,
+        .btn-secondary,
+        .btn-success {
             border-radius: 8px;
             padding: 10px;
             font-size: 16px;
             width: 100%;
             transition: background-color 0.3s ease;
         }
+
         .btn-primary {
             background-color: #41d6d4;
             border: none;
         }
+
         .btn-primary:hover {
             background-color: #36b3b0;
         }
+
         .btn-secondary {
             background-color: #f1f1f1;
             border: none;
         }
+
         .btn-secondary:hover {
             background-color: #e0e0e0;
         }
+
         .btn-success {
             background-color: #28a745;
             border: none;
         }
+
         .btn-success:hover {
             background-color: #218838;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
-        .form-group input, .form-group select, .form-group textarea {
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             width: 100%;
         }
+
         .password-eye {
             position: absolute;
             right: 20px;
@@ -113,18 +143,20 @@
             cursor: pointer;
             z-index: 2;
         }
+
         .form-control-wrapper {
             position: relative;
         }
     </style>
 </head>
+
 <body>
     <div class="welcome-container">
-        <img src="../../../logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
+        <img src="logo-HandsConnect.png" alt="HandsConnect Logo" class="logo">
         <h2>Welcome to HANDSCONNECT</h2>
         <p>Your gateway to volunteering and NGO collaborations.</p>
     </div>
-    
+
     <div class="card shadow-lg">
         <h4 class="text-center">Register</h4>
         <form id="registrationForm">
@@ -132,12 +164,12 @@
                 <label class="form-label">Register As</label>
                 <select class="form-control" id="role" required>
                     <option value="">Select Role</option>
-                    <option value="volunteer">Volunteer</option>
-                    <option value="ngo">NGO Representative</option>
+                    <option value="Volunteer">Volunteer</option>
+                    <option value="NGO">NGO</option>
                 </select>
                 <button type="button" class="btn btn-primary w-100 mt-3" onclick="nextStage(2)">Next</button>
             </div>
-            
+
             <div id="stage2" class="stage">
                 <label class="form-label">Full Name</label>
                 <input type="text" class="form-control" id="name" required>
@@ -153,151 +185,224 @@
                 <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(1)">Back</button>
                 <button type="button" class="btn btn-primary w-100 mt-3" onclick="nextStage(3)">Next</button>
             </div>
-            
+
             <div id="stage3" class="stage">
+                <!-- Volunteer Fields -->
                 <div id="volunteerFields">
                     <label class="form-label">Date of Birth</label>
-                    <input type="date" class="form-control" id="dob" onchange="validateFields()">
-                    <label class="form-label">City/Location</label>
-                    <input type="text" class="form-control" id="location" onchange="validateFields()">
+                    <input type="date" class="form-control" id="dob">
+                    <label class="form-label">City</label>
+                    <input type="text" class="form-control" id="city">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone">
+                    <label class="form-label">Skills</label>
+                    <textarea class="form-control" id="skills"></textarea>
                 </div>
+
+                <!-- NGO Fields -->
                 <div id="ngoFields">
                     <label class="form-label">NGO Name</label>
                     <input type="text" class="form-control" id="ngoName">
                     <label class="form-label">NGO Description</label>
                     <textarea class="form-control" id="ngoDescription"></textarea>
+                    <label class="form-label">NGO Address</label>
+                    <input type="text" class="form-control" id="ngoAddress">
                 </div>
+
                 <button type="button" class="btn btn-secondary w-100 mt-3" onclick="prevStage(2)">Back</button>
-                <button type="submit" class="btn btn-success w-100 mt-3" id="registerBtn" disabled>Register</button>
+                <button type="submit" class="btn btn-success w-100 mt-3">Register</button>
             </div>
-        </form>
     </div>
-    
+    </form>
+    </div>
+
     <div class="info-section" id="infoSection">
         <h2>What is HANDSCONNECT?</h2>
-        <p>HANDSCONNECT is the platform that brings volunteers and NGOs together to create meaningful collaborations and make a real impact around the world.</p>
+        <p>HANDSCONNECT is the platform that brings volunteers and NGOs together to create meaningful collaborations and
+            make a real impact around the world.</p>
     </div>
-    
+
     <script>
-        window.addEventListener('scroll', function() {
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
+            document.getElementById('stage1').style.display = 'block';
+        });
+        
+        window.addEventListener('scroll', function () {
             const infoSection = document.getElementById('infoSection');
             if (window.scrollY > 100) {
                 infoSection.classList.add('visible');
             }
         });
-
+        
         function nextStage(stage) {
+            // Clear previous validation
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        
+            // Validate current stage
             let valid = true;
-            document.querySelectorAll('#stage' + (stage - 1) + ' input, #stage' + (stage - 1) + ' select').forEach(input => {
-                if (!input.checkValidity()) {
+            const currentStage = document.querySelector('.stage.active');
+        
+            currentStage.querySelectorAll('input, select, textarea').forEach(input => {
+                if (input.required && !input.value.trim()) {
                     valid = false;
-                    input.reportValidity();
+                    input.classList.add('is-invalid');
                 }
             });
-
-            // Check if passwords match on stage 2
-            if (stage === 3) {
-                const password = document.getElementById('password').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-                if (password !== confirmPassword) {
-                    valid = false;
-                    alert("Passwords do not match!");
-                }
-            }
-
+        
             if (!valid) return;
-            
-            document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
-            document.getElementById('stage' + stage).classList.add('active');
-            document.getElementById('volunteerFields').style.display = document.getElementById('role').value === 'volunteer' ? 'block' : 'none';
-            document.getElementById('ngoFields').style.display = document.getElementById('role').value === 'ngo' ? 'block' : 'none';
+        
+            // Hide all stages
+            document.querySelectorAll('.stage').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
+        
+            // Show new stage
+            const nextStageElement = document.getElementById(`stage${stage}`);
+            nextStageElement.classList.add('active');
+            nextStageElement.style.display = 'block';
+        
+            // Update required attributes based on role
+            updateRequiredFields();
         }
         
         function prevStage(stage) {
-            document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
-            document.getElementById('stage' + stage).classList.add('active');
+            // Hide all stages
+            document.querySelectorAll('.stage').forEach(s => {
+                s.classList.remove('active');
+                s.style.display = 'none';
+            });
+        
+            // Show previous stage
+            const prevStageElement = document.getElementById(`stage${stage}`);
+            prevStageElement.classList.add('active');
+            prevStageElement.style.display = 'block';
+        
+            // Update required attributes
+            updateRequiredFields();
         }
-
+        
+        function updateRequiredFields() {
+            const role = document.getElementById('role').value;
+            const isStage3 = document.getElementById('stage3').classList.contains('active');
+        
+            // Only update requirements if in stage 3
+            if (isStage3) {
+                document.getElementById('dob').required = role === 'Volunteer';
+                document.getElementById('city').required = role === 'Volunteer';
+                document.getElementById('ngoName').required = role === 'NGO';
+                document.getElementById('ngoDescription').required = role === 'NGO';
+                document.getElementById('ngoAddress').required = role === 'NGO';
+            }
+        
+            // Toggle visibility
+            document.getElementById('volunteerFields').style.display = role === 'Volunteer' ? 'block' : 'none';
+            document.getElementById('ngoFields').style.display = role === 'NGO' ? 'block' : 'none';
+        }
+        
+        document.getElementById('role').addEventListener('change', function () {
+            const role = this.value;
+            updateRequiredFields();
+            
+            // Clear hidden fields
+            if (role === 'Volunteer') {
+                document.querySelectorAll('#ngoFields input, #ngoFields textarea').forEach(field => field.value = '');
+            } else {
+                document.querySelectorAll('#volunteerFields input, #volunteerFields textarea').forEach(field => field.value = '');
+            }
+        });
+        
         function togglePasswordVisibility() {
             const passwordField = document.getElementById('password');
             const confirmPasswordField = document.getElementById('confirmPassword');
-            if (passwordField.type === "password") {
-                passwordField.type = "text";
-                confirmPasswordField.type = "text";
-            } else {
-                passwordField.type = "password";
-                confirmPasswordField.type = "password";
-            }
+            passwordField.type = passwordField.type === "password" ? "text" : "password";
+            confirmPasswordField.type = confirmPasswordField.type === "password" ? "text" : "password";
         }
-
-        function validateFields() {
-            const dob = document.getElementById("dob").value;
-            const location = document.getElementById("location").value;
-            const registerBtn = document.getElementById("registerBtn");
-
-            if (dob && location) {
-                registerBtn.disabled = false;
-            } else {
-                registerBtn.disabled = true;
-            }
-        }
-
-        document.getElementById("registrationForm").addEventListener("submit", function(event) {
+        
+        document.getElementById("registrationForm").addEventListener("submit", async function (event) {
             event.preventDefault();
-
-            let email = document.getElementById("email").value;
-            alert("A verification email has been sent to " + email);
-
-            const formData = new FormData(this);
-
-            if (validateForm()) {
-                fetch('send_verification.php', {
+        
+            // Password validation
+            const password = document.getElementById('password').value;
+            const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+            if (!passwordRegex.test(password)) {
+                alert("Password must contain:\n- 8+ characters\n- 1 uppercase\n- 1 lowercase\n- 1 number");
+                return;
+            }
+        
+            // Confirm password match
+            if (password !== document.getElementById('confirmPassword').value) {
+                alert("Passwords do not match!");
+                return;
+            }
+        
+            // Role validation
+            const role = document.getElementById('role').value;
+            if (!role) {
+                alert("Please select a role!");
+                return;
+            }
+        
+            // Build form data
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: password,
+                role: role
+            };
+        
+            // Add role-specific data
+            if (role === 'Volunteer') {
+                formData.volunteer = {
+                    dob: document.getElementById('dob').value,
+                    city: document.getElementById('city').value,
+                    phone: document.getElementById('phone').value || null,
+                    skills: document.getElementById('skills').value || null
+                };
+                
+                // Volunteer field validation
+                if (!formData.volunteer.dob || !formData.volunteer.city) {
+                    alert("Please fill in all required volunteer fields");
+                    return;
+                }
+            } 
+            else if (role === 'NGO') {
+                formData.ngo = {
+                    name: document.getElementById('ngoName').value,
+                    description: document.getElementById('ngoDescription').value,
+                    address: document.getElementById('ngoAddress').value
+                };
+                
+                // NGO field validation
+                if (!formData.ngo.name || !formData.ngo.description || !formData.ngo.address) {
+                    alert("Please fill in all required NGO fields");
+                    return;
+                }
+            }
+        
+            try {
+                const response = await fetch('http://localhost:3000/api/register', {
                     method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                })
-                .catch(error => {
-                    alert("Error: " + error);
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
                 });
+        
+                const responseText = await response.text();
+                const data = responseText ? JSON.parse(responseText) : {};
+        
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                }
+        
+                alert('Registration successful!');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert(`Registration failed: ${error.message}`);
             }
         });
-
-        function validateForm() {
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            const confirmPassword = document.getElementById("confirmPassword").value;
-            const role = document.getElementById("role").value;
-            const name = document.getElementById("name").value;
-            const dob = document.getElementById("dob").value;
-            const location = document.getElementById("location").value;
-            const ngoName = document.getElementById("ngoName").value;
-            const ngoDescription = document.getElementById("ngoDescription").value;
-
-            if (name === "" || email === "" || password === "" || confirmPassword === "") {
-                alert("All fields are required.");
-                return false;
-            }
-
-            if (password !== confirmPassword) {
-                alert("Passwords do not match.");
-                return false;
-            }
-
-            if (role === "volunteer" && (dob === "" || location === "")) {
-                alert("Please fill in your birthdate and location.");
-                return false;
-            }
-
-            if (role === "ngo" && (ngoName === "" || ngoDescription === "")) {
-                alert("Please fill in your NGO's name and description.");
-                return false;
-            }
-
-            return true;
-        }
-    </script>
+        </script>
 </body>
+
 </html>

@@ -1,15 +1,29 @@
-/* eslint-disable no-undef */
-const mysql = require('mysql2');
+// db.js
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
+// Create connection pool
 const pool = mysql.createPool({
-    host: 'handsconnect-db.c502c2oymi0m.eu-north-1.rds.amazonaws.com', // Use the Endpoint from AWS
-    user: 'maj', // Your RDS Master Username
-    password: 'handsconnect271', // The password you set when creating the database
-    database: 'handsconnect', // Use the database name (set it if needed)
-    port: 3306, // Default MySQL port
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-module.exports = pool.promise();
+// Test connection (optional)
+async function testConnection() {
+    try {
+        const [rows] = await pool.query('SELECT 1 + 1 AS solution');
+        console.log('✅ Database connection test successful:', rows[0].solution === 2);
+    } catch (err) {
+        console.error('❌ Database connection failed:', err);
+    }
+}
+
+testConnection();
+
+// Export the pool for use in other files
+module.exports = pool;

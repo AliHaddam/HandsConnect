@@ -3,21 +3,25 @@ require('dotenv').config();
 console.log("JWT Secret:", process.env.JWT_SECRET);
 
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const express = require('express');
 const cors = require('cors');
-const db = require('./db'); // ✅ Import the MySQL connection from db.js
-const multer = require('multer'); // ✅ Import Multer for file uploads
+const db = require('./db');
+const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // ✅ Import File System module for handling file operations
+const fs = require('fs');
 
-const app = express(); // Initialize Express
+const app = express();
 app.use('/uploads', express.static('uploads'));
 
 // Middleware setup
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://127.0.0.1:5500', 
+    credentials: true
+  }));
 
-// ✅ Ensure users are authenticated
+// Authentication middleware
 function authenticateToken(req, res, next) {
     const token = req.headers['authorization'];
 
@@ -34,28 +38,155 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// ✅ Login Route (Dummy authentication for now)
-app.post('/api/login', (req, res) => {
-    console.log("Login request received:", req.body);
+app.post('/api/register', async (req, res) => {
+    const { name, email, password, role, volunteer, ngo } = req.body;
+
+    if (!name || !email || !password || !role) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    let connection;
+    try {
+        // Get a connection from the pool
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Check if email exists
+        const [users] = await connection.execute('SELECT * FROM Users WHERE email = ?', [email]);
+        if (users.length > 0) {
+            await connection.rollback();
+            connection.release();
+            return res.status(400).json({ error: 'Email already exists' });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert user into Users table
+        const [userResult] = await connection.execute(
+            `INSERT INTO Users (name, email, password_hash, role) 
+             VALUES (?, ?, ?, ?)`,
+            [name, email, hashedPassword, role]
+        );
+        const userId = userResult.insertId;
+
+        // Handle Volunteer registration
+        if (role === 'Volunteer') {
+            if (!volunteer?.city || !volunteer?.dob) {
+                throw new Error('Missing city or date of birth for volunteer');
+            }
+            await connection.execute(
+                `INSERT INTO Volunteers (user_id, phone, city, skills, Date_of_Birth) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [userId, volunteer.phone || null, volunteer.city, volunteer.skills || null, volunteer.dob]
+            );
+        }
+
+        // Handle NGO registration
+        else if (role === 'NGO') {
+            if (!ngo?.name || !ngo?.description || !ngo?.address) {
+                throw new Error('Missing NGO name, description, or address');
+            }
+            const [ngoResult] = await connection.execute(
+                `INSERT INTO NGOs (name, description, address) 
+                 VALUES (?, ?, ?)`,
+                [ngo.name, ngo.description, ngo.address]
+            );
+            
+            // Link user to NGO
+            await connection.execute(
+                'UPDATE Users SET ngo_id = ? WHERE user_id = ?',
+                [ngoResult.insertId, userId]
+            );
+        }
+
+        // Commit transaction
+        await connection.commit();
+        connection.release();
+        res.status(201).json({ message: 'Registration successful' });
+    
+  } catch (err) {
+    // Proper error response
+    console.error('Error:', err);
+    res.status(500).json({ 
+      error: err.message || 'Internal server error' 
+    });
+  }
+});
+
+// Updated Login Route
+app.post('/api/login', async (req, res) => {
+    console.log('Login request body:', req.body);
     const { email, password } = req.body;
 
-    const users = [{ email: 'user@domain.com', password: 'password123' }];
-    const user = users.find(u => u.email === email && u.password === password);
+    try {
+        const [users] = await db.execute('SELECT * FROM Users WHERE email = ?', [email]);
+        
+        if (users.length === 0) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
 
-    if (user) {
-        const token = jwt.sign({ id: user.id, email: user.email },
-            process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN }
+        const user = users[0];
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        // Determine redirect path
+        let redirectPath;
+        switch(user.role.toLowerCase()) {
+            case 'ngo':
+                redirectPath = 'dashboard.html';
+                break;
+            case 'volunteer':
+                redirectPath = 'opportunities.html';
+                break;
+            case 'admin':
+                redirectPath = 'admin-dashboard.html';
+                break;
+            default:
+                redirectPath = '/';
+        }
+
+        // Create JWT token
+        const token = jwt.sign(
+            { 
+                user_id: user.user_id, 
+                email: user.email,
+                role: user.role,
+                ngo_id: user.ngo_id
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
         );
-        console.log("✅ Login successful for:", email);
-        res.json({ message: 'Login successful!', token });
-    } else {
-        console.log("❌ Login failed for:", email);
-        res.status(401).json({ error: 'Invalid email or password' });
+
+        // Send response with redirect path
+        res.json({ 
+            success: true,
+            message: 'Login successful!', 
+            token,
+            user: {
+                id: user.user_id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                ngo_id: user.ngo_id
+            },
+            redirect: redirectPath 
+        });
+
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ 
+            success: false,
+            error: 'Internal server error' 
+        });
     }
 });
 
-// ✅ Store opportunities in MySQL instead of memory
-app.post('/api/opportunities', async(req, res) => {
+// Opportunities endpoints
+app.post('/api/opportunities', async (req, res) => {
     const { title, description, date, location } = req.body;
 
     if (!title || !description || !date || !location) {
@@ -74,8 +205,7 @@ app.post('/api/opportunities', async(req, res) => {
     }
 });
 
-// ✅ Retrieve all opportunities from MySQL
-app.get('/api/opportunities', async(req, res) => {
+app.get('/api/opportunities', async (req, res) => {
     try {
         const [results] = await db.execute("SELECT * FROM opportunities");
         res.json(results);
@@ -85,21 +215,16 @@ app.get('/api/opportunities', async(req, res) => {
     }
 });
 
-// ✅ DELETE a volunteer opportunity by ID
-app.delete('/api/opportunities/:id', async(req, res) => {
+app.delete('/api/opportunities/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // First, check if the opportunity exists
         const [results] = await db.execute("SELECT * FROM opportunities WHERE id = ?", [id]);
-
         if (results.length === 0) {
             return res.status(404).json({ error: "Opportunity not found." });
         }
 
-        // If it exists, proceed with deletion
         await db.execute("DELETE FROM opportunities WHERE id = ?", [id]);
-
         console.log(`✅ Opportunity deleted: ID ${id}`);
         res.json({ message: "Opportunity deleted successfully!" });
 
@@ -109,29 +234,26 @@ app.delete('/api/opportunities/:id', async(req, res) => {
     }
 });
 
-// ✅ Configure storage for uploaded files
+// File handling setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Save files in the 'uploads' folder
+        cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+        cb(null, Date.now() + path.extname(file.originalname));
     }
 });
 
 const upload = multer({ storage: storage });
 
-// ✅ File Upload Route
 app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded." });
     }
-
     console.log("✅ File uploaded:", req.file.filename);
     res.json({ message: "File uploaded successfully!", filename: req.file.filename });
 });
 
-// ✅ Get a list of uploaded files
 app.get('/api/files', (req, res) => {
     fs.readdir('uploads/', (err, files) => {
         if (err) {
@@ -142,12 +264,10 @@ app.get('/api/files', (req, res) => {
     });
 });
 
-// ✅ Delete an uploaded file
 app.delete('/api/files/:filename', (req, res) => {
     const { filename } = req.params;
     const filePath = `uploads/${filename}`;
 
-    // Check if file exists before deleting
     if (fs.existsSync(filePath)) {
         fs.unlink(filePath, (err) => {
             if (err) {
@@ -162,17 +282,20 @@ app.delete('/api/files/:filename', (req, res) => {
     }
 });
 
-// ✅ Protected Route (Example)
+// Protected route example
 app.get('/api/protected', authenticateToken, (req, res) => {
-    res.json({ message: "Access granted to protected resource", user: req.user });
+    res.json({ 
+        message: "Access granted to protected resource", 
+        user: req.user 
+    });
 });
 
-// ✅ Test route for server health check
+// Health check
 app.get('/', (req, res) => {
     res.send('Server is running!');
 });
 
-// ✅ Start the server
+// Start server
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
