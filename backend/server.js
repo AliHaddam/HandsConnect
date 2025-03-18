@@ -18,7 +18,9 @@ app.use('/uploads', express.static('uploads'));
 app.use(express.json());
 app.use(cors({
     origin: 'http://127.0.0.1:5500', 
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type']
   }));
 
 // Authentication middleware
@@ -295,6 +297,93 @@ app.get('/', (req, res) => {
     res.send('Server is running!');
 });
 
+
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const [users] = await db.execute('SELECT * FROM Users');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch users" });
+    }
+});
+
+app.post('/api/admin/ngos/:ngo_id/approve', async (req, res) => { // Changed to ngo_id
+    try {
+        const { ngo_id } = req.params;
+        await db.execute(
+            'UPDATE NGOs SET approval_status = "approved" WHERE ngo_id = ?',
+            [ngo_id]
+        );
+        res.json({ message: "NGO approved successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Approval failed" });
+    }
+});
+
+// Update NGO rejection endpoint
+app.post('/api/admin/ngos/:ngo_id/reject', async (req, res) => { // Changed to ngo_id
+    try {
+        const { ngo_id } = req.params;
+        await db.execute(
+            'UPDATE NGOs SET approval_status = "rejected" WHERE ngo_id = ?',
+            [ngo_id]
+        );
+        res.json({ message: "NGO rejected successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Rejection failed" });
+    }
+});
+
+// Update GET endpoint
+app.get('/api/admin/ngos/pending', async (req, res) => {
+    try {
+        const [ngos] = await db.execute(
+            'SELECT ngo_id, name, description FROM NGOs WHERE approval_status = "pending"' // Select ngo_id
+        );
+        res.json(ngos);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch NGOs" });
+    }
+});
+app.delete('/api/admin/users/:id', async (req, res) => {
+    try {
+        await db.execute('DELETE FROM Users WHERE user_id = ?', [req.params.id]);
+        res.json({ message: "User deleted" });
+    } catch (err) {
+        res.status(500).json({ error: "Deletion failed" });
+    }
+});
+app.patch('/api/admin/users/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        if (!['active', 'banned'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status" });
+        }
+
+        await db.execute(
+            'UPDATE Users SET account_status = ? WHERE user_id = ?',
+            [status, id]
+        );
+        
+        res.json({ message: 'Account status updated' });
+    } catch (err) {
+        res.status(500).json({ error: "Status update failed" });
+    }
+});
+
+// Update GET /api/admin/users endpoint:
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        const [users] = await db.execute(
+            'SELECT user_id, name, email, role, account_status FROM Users' // Added account_status
+        );
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch users" });
+    }
+});
 // Start server
 const PORT = 3000;
 app.listen(PORT, () => {
