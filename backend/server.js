@@ -10,6 +10,9 @@ const db = require('./db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
+const crypto = require('crypto');
 
 const app = express();
 app.use('/uploads', express.static('uploads'));
@@ -19,7 +22,32 @@ app.use(express.json());
 app.use(cors({
     origin: 'http://127.0.0.1:5500', 
     credentials: true
-  }));
+}));
+
+// OAuth2 setup
+const oAuth2Client = new google.auth.OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    process.env.REDIRECT_URI
+);
+oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
+
+// Email transporter setup
+async function createTransporter() {
+    const accessToken = await oAuth2Client.getAccessToken();
+
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            type: 'OAuth2',
+            user: process.env.EMAIL_USER,
+            clientId: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
+            refreshToken: process.env.REFRESH_TOKEN,
+            accessToken: accessToken,
+        },
+    });
+}
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
@@ -38,6 +66,7 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Registration endpoint
 app.post('/api/register', async (req, res) => {
     const { name, email, password, role, volunteer, ngo } = req.body;
 
@@ -61,12 +90,13 @@ app.post('/api/register', async (req, res) => {
 
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
+        const verificationToken = crypto.randomBytes(32).toString('hex');
 
         // Insert user into Users table
         const [userResult] = await connection.execute(
-            `INSERT INTO Users (name, email, password_hash, role) 
-             VALUES (?, ?, ?, ?)`,
-            [name, email, hashedPassword, role]
+            `INSERT INTO Users (name, email, password_hash, role, Verified, verification_token) 
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [name, email, hashedPassword, role, 'NO', verificationToken]
         );
         const userId = userResult.insertId;
 
@@ -92,8 +122,8 @@ app.post('/api/register', async (req, res) => {
                  VALUES (?, ?, ?)`,
                 [ngo.name, ngo.description, ngo.address]
             );
-            
-            // Link user to NGO
+
+             // Link user to NGO
             await connection.execute(
                 'UPDATE Users SET ngo_id = ? WHERE user_id = ?',
                 [ngoResult.insertId, userId]
@@ -103,37 +133,69 @@ app.post('/api/register', async (req, res) => {
         // Commit transaction
         await connection.commit();
         connection.release();
-        res.status(201).json({ message: 'Registration successful' });
-    
-  } catch (err) {
-    // Proper error response
-    console.error('Error:', err);
-    res.status(500).json({ 
-      error: err.message || 'Internal server error' 
-    });
-  }
+
+        const verificationLink = `http://localhost:3000/api/verify-email?token=${verificationToken}`;
+        const transporter = await createTransporter();
+
+        await transporter.sendMail({
+            from: `HandsConnect <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Email Verification',
+            text: `Click the link to verify your email: ${verificationLink}`,
+            html: `<p>Click the link to verify your email: <a href="${verificationLink}">Verify Email</a></p>`
+        });
+
+        res.status(201).json({ message: 'Registration successful. Check your email to verify your account.' });
+    } catch (err) {
+        // Proper error response
+        console.error('Error:', err);
+        res.status(500).json({ 
+          error: err.message || 'Internal server error' 
+        });
+    }
 });
 
-// Updated Login Route
+// Email verification endpoint
+app.get('/api/verify-email', async (req, res) => {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ error: 'Invalid or missing token' });
+
+    try {
+        const [users] = await db.execute('SELECT * FROM Users WHERE verification_token = ?', [token]);
+        if (users.length === 0) return res.status(400).json({ error: 'Invalid token' });
+
+        await db.execute(
+            "UPDATE Users SET Verified = 'YES', verification_token = NULL WHERE verification_token = ?",
+            [token]
+        );
+        res.json({ message: 'Email verified successfully. You can now log in.' });
+    } catch (err) {
+        console.error('Verification error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Login endpoint
 app.post('/api/login', async (req, res) => {
-    console.log('Login request body:', req.body);
     const { email, password } = req.body;
+    console.log('Login request body:', req.body);
 
     try {
         const [users] = await db.execute('SELECT * FROM Users WHERE email = ?', [email]);
-        
         if (users.length === 0) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
         const user = users[0];
+        if (user.Verified !== 'YES') {
+            return res.status(403).json({ error: 'Please verify your email before logging in.' });
+        }
+
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
-        // Determine redirect path
         let redirectPath;
         switch(user.role.toLowerCase()) {
             case 'ngo':
@@ -175,7 +237,6 @@ app.post('/api/login', async (req, res) => {
             },
             redirect: redirectPath 
         });
-
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ 
@@ -186,7 +247,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Opportunities endpoints
-app.post('/api/opportunities', async (req, res) => {
+app.post('/api/opportunities', authenticateToken, async (req, res) => {
     const { title, description, date, location } = req.body;
 
     if (!title || !description || !date || !location) {
@@ -215,7 +276,7 @@ app.get('/api/opportunities', async (req, res) => {
     }
 });
 
-app.delete('/api/opportunities/:id', async (req, res) => {
+app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
