@@ -1,4 +1,4 @@
 # Node.js modules and cache files
 node_modules/
 npm-debug.log
-.env
+backend/.env
