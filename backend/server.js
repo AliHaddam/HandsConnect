@@ -23,10 +23,9 @@ const logger = winston.createLogger({
 });
 logger.info("Server is starting...");
 
-
 const app = express();
 app.use('/uploads', express.static('uploads'));
-
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
 app.use(morgan("combined"));
@@ -270,6 +269,68 @@ app.post('/api/login', async (req, res) => {
             success: false,
             error: 'Internal server error' 
         });
+    }
+});
+
+// Password reset request endpoint
+app.post('/api/request-password-reset', async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const [users] = await db.execute('SELECT * FROM Users WHERE email = ?', [email]);
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'Email not found' });
+        }
+
+        const user = users[0];
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
+
+        await db.execute(
+            'UPDATE Users SET reset_token = ?, reset_token_expiry = ? WHERE user_id = ?',
+            [resetToken, resetTokenExpiry, user.user_id]
+        );
+
+        const resetLink = `http://localhost:3000/reset-password.html?token=${resetToken}`;
+        const transporter = await createTransporter();
+
+        await transporter.sendMail({
+            from: `HandsConnect <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Password Reset',
+            text: `Click the link to reset your password: ${resetLink}`,
+            html: `<p>Click the link to reset your password: <a href="${resetLink}">Reset Password</a></p>`
+        });
+
+        res.status(200).json({ message: 'Password reset link sent to your email.' });
+    } catch (err) {
+        console.error('Error requesting password reset:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Password reset endpoint
+app.post('/api/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    try {
+        const [users] = await db.execute('SELECT * FROM Users WHERE reset_token = ? AND reset_token_expiry > ?', [token, Date.now()]);
+        if (users.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired token' });
+        }
+
+        const user = users[0];
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await db.execute(
+            'UPDATE Users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL WHERE user_id = ?',
+            [hashedPassword, user.user_id]
+        );
+
+        res.status(200).json({ message: 'Password reset successful. You can now log in with your new password.' });
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
