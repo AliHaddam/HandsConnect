@@ -13,9 +13,34 @@ const fs = require('fs');
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const crypto = require('crypto');
+const winston = require("winston");
+const logger = winston.createLogger({
+  level: "info",
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: "server.log" }),
+  ],
+});
+logger.info("Server is starting...");
+
 
 const app = express();
 app.use('/uploads', express.static('uploads'));
+
+
+const morgan = require("morgan");
+app.use(morgan("combined"));
+
+const helmet = require("helmet");
+app.use(helmet());
+
+const rateLimit = require("express-rate-limit");
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 100, // Limit each IP to 100 requests
+});
+app.use(limiter);
+
 
 // Middleware setup
 app.use(express.json());
