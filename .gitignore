@@ -1,4 +1,7 @@
 # Node.js modules and cache files
 node_modules/
-npm-debug.log
 backend/.env
+
+backend/error.log
+backend/server.log
+package-lock.json
