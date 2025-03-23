@@ -54,24 +54,16 @@
                 <textarea class="form-control" id="description" required></textarea>
             </div>
             <div class="mb-3">
-                <label class="form-label">Date</label>
-                <input type="date" class="form-control" id="date" required>
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" required>
             </div>
+            <div class="mb-3">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" required>
+            </div>            
             <div class="mb-3">
                 <label class="form-label">Location</label>
                 <input type="text" class="form-control" id="location" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Coordinator Name</label>
-                <input type="text" class="form-control" id="coordinator_name" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Coordinator Email</label>
-                <input type="email" class="form-control" id="coordinator_email" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Coordinator Phone</label>
-                <input type="tel" class="form-control" id="coordinator_phone" required>
             </div>
             <button type="button" class="btn btn-info" id="previewBtn" onclick="showPreview()">Preview</button>
             <button type="button" class="btn btn-primary" onclick="submitOpportunity()">Submit</button>
