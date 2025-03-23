@@ -15,11 +15,11 @@ const { google } = require('googleapis');
 const crypto = require('crypto');
 const winston = require("winston");
 const logger = winston.createLogger({
-  level: "info",
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: "server.log" }),
-  ],
+    level: "info",
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: "server.log" }),
+    ],
 });
 logger.info("Server is starting...");
 
@@ -35,8 +35,8 @@ app.use(helmet());
 
 const rateLimit = require("express-rate-limit");
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 100, // Limit each IP to 100 requests
+    windowMs: 15 * 60 * 1000, // 15 mins
+    max: 100, // Limit each IP to 100 requests
 });
 app.use(limiter);
 
@@ -44,7 +44,7 @@ app.use(limiter);
 // Middleware setup
 app.use(express.json());
 app.use(cors({
-    origin: 'http://127.0.0.1:5500', 
+    origin: 'http://127.0.0.1:5500',
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -77,17 +77,20 @@ async function createTransporter() {
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
-    const token = req.headers['authorization'];
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
 
-    if (!token) {
-        return res.status(401).json({ error: "Access denied. No token provided." });
+    // ✅ Allow dev mode
+    if (token === "dev-mode") {
+        req.user = { ngo_id: 1 }; // 🔥 mock NGO user
+        return next();
     }
 
-    jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ error: "Invalid or expired token." });
-        }
-        req.user = decoded;
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
         next();
     });
 }
@@ -175,8 +178,8 @@ app.post('/api/register', async (req, res) => {
     } catch (err) {
         // Proper error response
         console.error('Error:', err);
-        res.status(500).json({ 
-          error: err.message || 'Internal server error' 
+        res.status(500).json({
+            error: err.message || 'Internal server error'
         });
     }
 });
@@ -223,7 +226,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         let redirectPath;
-        switch(user.role.toLowerCase()) {
+        switch (user.role.toLowerCase()) {
             case 'ngo':
                 redirectPath = 'dashboard.html';
                 break;
@@ -239,8 +242,8 @@ app.post('/api/login', async (req, res) => {
 
         // Create JWT token
         const token = jwt.sign(
-            { 
-                user_id: user.user_id, 
+            {
+                user_id: user.user_id,
                 email: user.email,
                 role: user.role,
                 ngo_id: user.ngo_id
@@ -250,9 +253,9 @@ app.post('/api/login', async (req, res) => {
         );
 
         // Send response with redirect path
-        res.json({ 
+        res.json({
             success: true,
-            message: 'Login successful!', 
+            message: 'Login successful!',
             token,
             user: {
                 id: user.user_id,
@@ -261,13 +264,13 @@ app.post('/api/login', async (req, res) => {
                 role: user.role,
                 ngo_id: user.ngo_id
             },
-            redirect: redirectPath 
+            redirect: redirectPath
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            error: 'Internal server error' 
+            error: 'Internal server error'
         });
     }
 });
@@ -335,18 +338,29 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 // Opportunities endpoints
-app.post('/api/opportunities', authenticateToken, async (req, res) => {
-    const { title, description, date, location } = req.body;
+app.post('/api/opportunities', async (req, res) => {
+    const { title, description, start_date, end_date, location, ngo_id } = req.body;
 
-    if (!title || !description || !date || !location) {
+    if (!title || !description || !start_date || !end_date || !location) {
         return res.status(400).json({ error: "All fields are required." });
     }
 
     try {
-        const query = "INSERT INTO opportunities (title, description, date, location) VALUES (?, ?, ?, ?)";
-        const [result] = await db.execute(query, [title, description, date, location]);
+        const query = `
+            INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id)
+            VALUES (?, ?, ?, ?, ?, ?)`;
+        const [result] = await db.execute(query, [title, description, start_date, end_date, location, ngo_id]);
 
-        console.log("✅ Opportunity saved:", { id: result.insertId, title, description, date, location });
+
+        console.log("✅ Opportunity saved:", {
+            id: result.insertId,
+            title,
+            description,
+            start_date,
+            end_date,
+            location,
+        });
+
         res.status(201).json({ message: "Opportunity submitted successfully!", id: result.insertId });
     } catch (err) {
         console.error("❌ Error inserting opportunity:", err);
@@ -354,26 +368,53 @@ app.post('/api/opportunities', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/opportunities', async (req, res) => {
+// POST /api/applications - Store a volunteer application
+app.post('/api/applications', authenticateToken, async (req, res) => {
+    const { opportunity_id } = req.body;
+
+    if (!opportunity_id) {
+        return res.status(400).json({ error: "Opportunity ID is required." });
+    }
+
+    const volunteer_id = req.user.user_id;  // Get volunteer ID from the authenticated token
+
     try {
-        const [results] = await db.execute("SELECT * FROM opportunities");
-        res.json(results);
+        // Check if the user has already applied for this opportunity
+        const [existingApplication] = await db.execute(
+            `SELECT * FROM Applications WHERE volunteer_id = ? AND opportunity_id = ?`,
+            [volunteer_id, opportunity_id]
+        );
+
+        if (existingApplication.length > 0) {
+            return res.status(400).json({ error: "You have already applied for this opportunity." });
+        }
+
+        // Insert a new application record
+        const [result] = await db.execute(
+            `INSERT INTO Applications (volunteer_id, opportunity_id, status) VALUES (?, ?, ?)`,
+            [volunteer_id, opportunity_id, 'pending']
+        );
+
+        console.log(`✅ Application submitted by volunteer ${volunteer_id} for opportunity ${opportunity_id}`);
+
+        res.status(201).json({ message: "Application submitted successfully.", application_id: result.insertId });
     } catch (err) {
-        console.error("❌ Error fetching opportunities:", err);
-        res.status(500).json({ error: "Failed to fetch opportunities." });
+        console.error("❌ Error submitting application:", err);
+        res.status(500).json({ error: "Failed to submit application." });
     }
 });
 
+// ✅ First: DELETE route
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const [results] = await db.execute("SELECT * FROM opportunities WHERE id = ?", [id]);
+        const [results] = await db.execute("DELETE FROM Opportunities WHERE opportunity_id = ?", [id]);
         if (results.length === 0) {
             return res.status(404).json({ error: "Opportunity not found." });
         }
 
-        await db.execute("DELETE FROM opportunities WHERE id = ?", [id]);
+        const [result] = await db.execute("DELETE FROM Opportunities WHERE opportunity_id = ?", [id]);
         console.log(`✅ Opportunity deleted: ID ${id}`);
         res.json({ message: "Opportunity deleted successfully!" });
 
@@ -382,6 +423,62 @@ app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
         res.status(500).json({ error: "Failed to delete opportunity." });
     }
 });
+
+// ✅ Then: GET route
+app.get('/api/opportunities', async (req, res) => {
+    try {
+        const [results] = await db.execute(`
+            SELECT opportunity_id, title, description, start_date, end_date, location
+            FROM Opportunities
+            ORDER BY start_date ASC
+        `);
+
+        res.json(results);
+    } catch (err) {
+        console.error("❌ Error fetching opportunities:", err);
+        res.status(500).json({ error: "Failed to fetch opportunities." });
+    }
+});
+
+// ✅ Get a single opportunity by ID
+app.get('/api/opportunities/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [results] = await db.execute(
+            'SELECT * FROM Opportunities WHERE opportunity_id = ?',
+            [id]
+        );
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Opportunity not found." });
+        }
+
+        res.json(results[0]);
+    } catch (err) {
+        console.error("❌ Error fetching opportunity:", err);
+        res.status(500).json({ error: "Failed to fetch opportunity." });
+    }
+});
+
+app.get('/api/opportunities/search', async (req, res) => {
+    const { location, keyword } = req.query;
+    try {
+        const query = `
+            SELECT opportunity_id, title, description, start_date, end_date, location, ngo_id
+            FROM Opportunities
+            WHERE location LIKE ? AND (title LIKE ? OR description LIKE ?)
+            ORDER BY start_date ASC
+        `;
+        const [results] = await db.execute(query, [`%${location}%`, `%${keyword}%`, `%${keyword}%`]);
+
+        res.json(results);
+    } catch (err) {
+        console.error("❌ Error fetching opportunities:", err);
+        res.status(500).json({ error: "Failed to fetch opportunities." });
+    }
+});
+
 
 // File handling setup
 const storage = multer.diskStorage({
@@ -433,9 +530,9 @@ app.delete('/api/files/:filename', (req, res) => {
 
 // Protected route example
 app.get('/api/protected', authenticateToken, (req, res) => {
-    res.json({ 
-        message: "Access granted to protected resource", 
-        user: req.user 
+    res.json({
+        message: "Access granted to protected resource",
+        user: req.user
     });
 });
 
@@ -499,7 +596,7 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-        
+
         if (!['active', 'banned'].includes(status)) {
             return res.status(400).json({ error: "Invalid status" });
         }
@@ -508,7 +605,7 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
             'UPDATE Users SET account_status = ? WHERE user_id = ?',
             [status, id]
         );
-        
+
         res.json({ message: 'Account status updated' });
     } catch (err) {
         res.status(500).json({ error: "Status update failed" });
