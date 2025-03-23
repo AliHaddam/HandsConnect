@@ -31,12 +31,12 @@
         <hr>
         <h4 id="previewTitle"></h4>
         <p id="previewDescription"></p>
-        <p><strong>Date:</strong> <span id="previewDate"></span></p>
+        <p><strong>Start Date:</strong> <span id="previewStartDate"></span></p>
+        <p><strong>End Date:</strong> <span id="previewEndDate"></span></p>
         <p><strong>Location:</strong> <span id="previewLocation"></span></p>
 
         <div class="text-center">
             <button class="btn btn-secondary" onclick="goBack()">Edit</button>
-            <button class="btn btn-success" onclick="submitOpportunity()">Submit</button>
         </div>
     </div>
 
@@ -54,7 +54,8 @@
             const opportunity = JSON.parse(storedData);
             document.getElementById("previewTitle").innerText = opportunity.title;
             document.getElementById("previewDescription").innerText = opportunity.description;
-            document.getElementById("previewDate").innerText = opportunity.date;
+            document.getElementById("previewStartDate").innerText = opportunity.start_date;
+            document.getElementById("previewEndDate").innerText = opportunity.end_date;
             document.getElementById("previewLocation").innerText = opportunity.location;
         });
 

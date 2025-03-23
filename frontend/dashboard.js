@@ -1,45 +1,3 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-undef */
-
-// Check if the user has a valid token
-const token = localStorage.getItem("authToken");
-
-if (!token) {
-    alert("You must be logged in to access this page.");
-    window.location.href = "login.html";
-} else {
-    try {
-        // Decode the JWT token
-        const payload = JSON.parse(atob(token.split(".")[1]));
-
-        // Check if the token has expired
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (payload.exp < currentTime) {
-            alert("Session expired. Please log in again.");
-            localStorage.removeItem("authToken");
-            window.location.href = "login.html";
-        } else {
-            document.addEventListener("DOMContentLoaded", function () {
-                const userEmail = document.getElementById("userEmail");
-                if (userEmail) {
-                    userEmail.textContent = payload.email;
-                }
-
-                if (payload.role === "NGO_Representative") {
-                    loadOpportunities(payload.ngo_id); // Load opportunities for this NGO
-                }
-
-                fetchFiles();
-            });
-        }
-    } catch (error) {
-        console.error("Error decoding token:", error);
-        alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
-        window.location.href = "login.html";
-    }
-}
-
 function logout() {
     localStorage.removeItem("authToken");
     alert("You have been logged out.");
@@ -65,7 +23,6 @@ function loadOpportunities(ngoId) {
                         <span>${opportunity.title} - ${new Date(opportunity.start_date).toDateString()} - ${opportunity.location}</span>
                         <span>Capacity: ${opportunity.capacity}</span>
                         <div>
-                            <button class="btn btn-success btn-sm" onclick="redirectToApplyPage(${opportunity.opportunity_id})">Apply</button>
                             <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.opportunity_id})">Delete</button>
                         </div>
                     `;
@@ -91,9 +48,9 @@ function submitOpportunity() {
     const startDate = document.getElementById("start_date").value;
     const endDate = document.getElementById("end_date").value;
     const location = document.getElementById("location").value;
-    const capacity = document.getElementById("capacity").value;
 
-    if (!title || !description || !startDate || !endDate || !location || !capacity) {
+
+    if (!title || !description || !startDate || !endDate || !location) {
         alert("Please fill in all fields before submitting.");
         return;
     }
@@ -107,7 +64,7 @@ function submitOpportunity() {
 
     try {
         const payload = JSON.parse(atob(token.split(".")[1]));
-        const ngoId = payload.ngo_id; // Extract NGO ID from token
+        const ngoId = payload?.ngo_id || 1; // 🔥 Hardcode ngo_id = 1 if none exists (dev-only)
 
         const opportunityData = {
             title,
@@ -115,22 +72,27 @@ function submitOpportunity() {
             start_date: startDate,
             end_date: endDate,
             location,
-            capacity: parseInt(capacity),
-            ngo_id: ngoId
+            ngo_id: ngoId 
         };
 
         fetch("http://localhost:3000/api/opportunities", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(opportunityData)
-            })
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(opportunityData)
+        })
             .then(response => response.json())
             .then(data => {
-                alert(data.message);
-                loadOpportunities(ngoId);
+                console.log("🟡 Response from POST /api/opportunities:", data);
+                if (data.message) {
+                    alert(data.message);
+                } else {
+                    alert("Something went wrong. Check console.");
+                }
+                const payload = JSON.parse(atob(token.split(".")[1]));
+                loadOpportunities(payload.ngo_id);
             })
             .catch(error => console.error("Error submitting opportunity:", error));
     } catch (error) {
@@ -145,36 +107,126 @@ function submitOpportunity() {
 function deleteOpportunity(opportunityId) {
     if (!confirm("Are you sure you want to delete this opportunity?")) return;
 
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "login.html";
-        return;
+    const devBypass = true;
+    let token = localStorage.getItem("authToken");
+
+    let ngoId = null;
+
+    if (devBypass) {
+        console.warn("🚧 DEV MODE: Token checks are bypassed for delete.");
+        token = "dev-mode";
+        ngoId = 1;
+    } else {
+        if (!token) {
+            alert("Session expired. Please log in again.");
+            window.location.href = "login.html";
+            return;
+        }
+
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        ngoId = payload.ngo_id;
     }
 
     fetch(`http://localhost:3000/api/opportunities/${opportunityId}`, {
-            method: "DELETE",
-            headers: {
-                "Authorization": `Bearer ${token}`
-            }
-        })
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    })
         .then(response => response.json())
         .then(data => {
             alert(data.message);
             const payload = JSON.parse(atob(token.split(".")[1]));
-            loadOpportunities(payload.ngo_id); // Refresh the list
+            loadOpportunities(ngoId); // ✅ use mocked ngoId too
         })
         .catch(error => console.error("Error deleting opportunity:", error));
 }
 
-// Load data when the page loads
 document.addEventListener("DOMContentLoaded", () => {
+    const devBypass = true;  // 🔁 Set this to false later
+
+    if (devBypass) {
+        console.warn("🚧 DEV MODE: Token checks are bypassed for dashboard access.");
+        const fakePayload = { ngo_id: 1 };
+        loadOpportunities(fakePayload.ngo_id);
+        loadPreviewIntoForm();
+        fetchFiles?.();
+        return;
+    }    
+
     const token = localStorage.getItem("authToken");
-    if (token) {
+
+    if (!token) {
+        alert("You must be logged in to access this page.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
         const payload = JSON.parse(atob(token.split(".")[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        if (payload.exp < currentTime) {
+            alert("Session expired. Please log in again.");
+            localStorage.removeItem("authToken");
+            window.location.href = "login.html";
+            return;
+        }
+
+        const userEmail = document.getElementById("userEmail");
+        if (userEmail) {
+            userEmail.textContent = payload.email;
+        }
+
         if (payload.role === "NGO_Representative") {
             loadOpportunities(payload.ngo_id);
         }
+
+        fetchFiles();
+        loadPreviewIntoForm();
+
+    } catch (error) {
+        console.error("Error decoding token:", error);
+        alert("Invalid session. Please log in again.");
+        localStorage.removeItem("authToken");
+        window.location.href = "login.html";
     }
-    fetchFiles();
 });
+
+function loadPreviewIntoForm() {
+    const storedData = localStorage.getItem("opportunityPreview");
+    if (!storedData) return;
+
+    const opportunity = JSON.parse(storedData);
+
+    document.getElementById("title").value = opportunity.title || '';
+    document.getElementById("description").value = opportunity.description || '';
+    document.getElementById("start_date").value = opportunity.start_date || '';
+    document.getElementById("end_date").value = opportunity.end_date || '';
+    document.getElementById("location").value = opportunity.location || '';
+}
+
+function showPreview() {
+    const title = document.getElementById("title").value;
+    const description = document.getElementById("description").value;
+    const startDate = document.getElementById("start_date").value;
+    const endDate = document.getElementById("end_date").value;
+    const location = document.getElementById("location").value;
+
+    if (!title || !description || !startDate || !endDate || !location) {
+        alert("Please fill in all required fields before previewing.");
+        return;
+    }
+
+    const previewData = {
+        title,
+        description,
+        start_date: startDate,
+        end_date: endDate,
+        location
+    };
+
+    localStorage.setItem("opportunityPreview", JSON.stringify(previewData));
+    window.location.href = "preview.html";
+}
+
