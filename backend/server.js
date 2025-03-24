@@ -40,7 +40,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-
 // Middleware setup
 app.use(express.json());
 app.use(cors({
@@ -82,13 +81,13 @@ function authenticateToken(req, res, next) {
 
     // ✅ Allow dev mode
     if (token === "dev-mode") {
-        req.user = { ngo_id: 1 }; // 🔥 mock NGO user
+        req.user = { user_id: 1, role: 'Volunteer' }; // 🔥 Mock user for testing
         return next();
     }
 
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) return res.sendStatus(403);
         req.user = user;
         next();
@@ -105,11 +104,9 @@ app.post('/api/register', async (req, res) => {
 
     let connection;
     try {
-        // Get a connection from the pool
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // Check if email exists
         const [users] = await connection.execute('SELECT * FROM Users WHERE email = ?', [email]);
         if (users.length > 0) {
             await connection.rollback();
@@ -117,11 +114,9 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ error: 'Email already exists' });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken = crypto.randomBytes(32).toString('hex');
 
-        // Insert user into Users table
         const [userResult] = await connection.execute(
             `INSERT INTO Users (name, email, password_hash, role, Verified, verification_token) 
              VALUES (?, ?, ?, ?, ?, ?)`,
@@ -129,7 +124,6 @@ app.post('/api/register', async (req, res) => {
         );
         const userId = userResult.insertId;
 
-        // Handle Volunteer registration
         if (role === 'Volunteer') {
             if (!volunteer?.city || !volunteer?.dob) {
                 throw new Error('Missing city or date of birth for volunteer');
@@ -140,8 +134,6 @@ app.post('/api/register', async (req, res) => {
                 [userId, volunteer.phone || null, volunteer.city, volunteer.skills || null, volunteer.dob]
             );
         }
-
-        // Handle NGO registration
         else if (role === 'NGO') {
             if (!ngo?.name || !ngo?.description || !ngo?.address) {
                 throw new Error('Missing NGO name, description, or address');
@@ -151,15 +143,12 @@ app.post('/api/register', async (req, res) => {
                  VALUES (?, ?, ?)`,
                 [ngo.name, ngo.description, ngo.address]
             );
-
-            // Link user to NGO
             await connection.execute(
                 'UPDATE Users SET ngo_id = ? WHERE user_id = ?',
                 [ngoResult.insertId, userId]
             );
         }
 
-        // Commit transaction
         await connection.commit();
         connection.release();
 
@@ -170,13 +159,11 @@ app.post('/api/register', async (req, res) => {
             from: `HandsConnect <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Email Verification',
-            text: `Click the link to verify your email: ${verificationLink}`,
             html: `<p>Click the link to verify your email: <a href="${verificationLink}">Verify Email</a></p>`
         });
 
         res.status(201).json({ message: 'Registration successful. Check your email to verify your account.' });
     } catch (err) {
-        // Proper error response
         console.error('Error:', err);
         res.status(500).json({
             error: err.message || 'Internal server error'
@@ -240,7 +227,6 @@ app.post('/api/login', async (req, res) => {
                 redirectPath = '/';
         }
 
-        // Create JWT token
         const token = jwt.sign(
             {
                 user_id: user.user_id,
@@ -252,7 +238,6 @@ app.post('/api/login', async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
         );
 
-        // Send response with redirect path
         res.json({
             success: true,
             message: 'Login successful!',
@@ -301,7 +286,6 @@ app.post('/api/request-password-reset', async (req, res) => {
             from: `HandsConnect <${process.env.EMAIL_USER}>`,
             to: email,
             subject: 'Password Reset',
-            text: `Click the link to reset your password: ${resetLink}`,
             html: `<p>Click the link to reset your password: <a href="${resetLink}">Reset Password</a></p>`
         });
 
@@ -337,6 +321,162 @@ app.post('/api/reset-password', async (req, res) => {
     }
 });
 
+// ===== APPLY FUNCTIONALITY ===== //
+
+// Enhanced GET /api/opportunities (now includes application status)
+app.get('/api/opportunities', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    let user_id = null;
+
+    try {
+        if (token && token !== "dev-mode") {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            user_id = decoded.user_id;
+        }
+
+        const [opportunities] = await db.execute(`
+            SELECT 
+                o.*,
+                ${user_id ? 
+                    `EXISTS(
+                        SELECT 1 FROM Applications 
+                        WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id
+                    ) AS has_applied` : 
+                    '0 AS has_applied'}
+            FROM Opportunities o
+            ORDER BY o.start_date ASC
+        `, user_id ? [user_id] : []);
+
+        res.json(opportunities);
+    } catch (err) {
+        console.error("Error fetching opportunities:", err);
+        res.status(500).json({ error: "Failed to fetch opportunities." });
+    }
+});
+
+// Handle Apply button submissions
+app.post('/api/applications', authenticateToken, async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    
+    const { opportunity_id } = req.body;
+    const user_id = req.user.user_id; // From JWT token
+
+    if (!opportunity_id || isNaN(opportunity_id)) {
+        return res.status(400).json({ 
+            success: false,
+            error: "Valid opportunity ID is required." 
+        });
+    }
+
+    try {
+        // Verify the opportunity exists
+        const [opportunity] = await db.execute(
+            'SELECT opportunity_id, title FROM Opportunities WHERE opportunity_id = ?',
+            [opportunity_id]
+        );
+        
+        if (opportunity.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: "Opportunity not found"
+            });
+        }
+
+        // Get volunteer_id from Users -> Volunteers relationship
+        const [volunteer] = await db.execute(
+            'SELECT v.volunteer_id FROM Volunteers v WHERE v.user_id = ?',
+            [user_id]
+        );
+
+        if (volunteer.length === 0) {
+            return res.status(403).json({
+                success: false,
+                error: "Only volunteers can apply to opportunities"
+            });
+        }
+
+        const volunteer_id = volunteer[0].volunteer_id;
+
+        // Check for duplicate application
+        const [existing] = await db.execute(
+            `SELECT 1 FROM Applications 
+             WHERE volunteer_id = ? AND opportunity_id = ? LIMIT 1`,
+            [volunteer_id, opportunity_id]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({ 
+                success: false,
+                error: "You've already applied to this opportunity" 
+            });
+        }
+
+        // Start transaction
+        const connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // Insert new application
+            const [result] = await connection.execute(
+                `INSERT INTO Applications (volunteer_id, opportunity_id, status) 
+                 VALUES (?, ?, 'pending')`,
+                [volunteer_id, opportunity_id]
+            );
+
+            // Get user details for email
+            const [user] = await connection.execute(
+                'SELECT email, name FROM Users WHERE user_id = ?',
+                [user_id]
+            );
+
+            // Send email notification (non-blocking)
+            if (user.length > 0) {
+                const transporter = await createTransporter();
+                transporter.sendMail({
+                    from: `HandsConnect <${process.env.EMAIL_USER}>`,
+                    to: user[0].email,
+                    subject: 'Application Submitted',
+                    html: `
+                        <p>Hi ${user[0].name},</p>
+                        <p>Your application for <strong>${opportunity[0].title}</strong> was received!</p>
+                        <p>Status: <strong>Pending</strong></p>
+                    `
+                }).catch(emailError => {
+                    console.error('Email sending failed:', emailError);
+                });
+            }
+
+            await connection.commit();
+            connection.release();
+
+            return res.status(201).json({ 
+                success: true,
+                application_id: result.insertId,
+                message: "Application submitted successfully"
+            });
+
+        } catch (transactionError) {
+            await connection.rollback();
+            connection.release();
+            throw transactionError;
+        }
+
+    } catch (err) {
+        console.error("Application error:", err);
+        
+        let errorMessage = "Failed to submit application";
+        if (err.code === 'ER_NO_REFERENCED_ROW_2') {
+            errorMessage = "Invalid data reference - please check your account status";
+        }
+
+        return res.status(500).json({ 
+            success: false,
+            error: errorMessage
+        });
+    }
+});
+// ===== END APPLY FUNCTIONALITY ===== //
+
 // Opportunities endpoints
 app.post('/api/opportunities', async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
@@ -350,7 +490,6 @@ app.post('/api/opportunities', async (req, res) => {
             INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id)
             VALUES (?, ?, ?, ?, ?, ?)`;
         const [result] = await db.execute(query, [title, description, start_date, end_date, location, ngo_id]);
-
 
         console.log("✅ Opportunity saved:", {
             id: result.insertId,
@@ -368,43 +507,6 @@ app.post('/api/opportunities', async (req, res) => {
     }
 });
 
-// POST /api/applications - Store a volunteer application
-app.post('/api/applications', authenticateToken, async (req, res) => {
-    const { opportunity_id } = req.body;
-
-    if (!opportunity_id) {
-        return res.status(400).json({ error: "Opportunity ID is required." });
-    }
-
-    const volunteer_id = req.user.user_id;  // Get volunteer ID from the authenticated token
-
-    try {
-        // Check if the user has already applied for this opportunity
-        const [existingApplication] = await db.execute(
-            `SELECT * FROM Applications WHERE volunteer_id = ? AND opportunity_id = ?`,
-            [volunteer_id, opportunity_id]
-        );
-
-        if (existingApplication.length > 0) {
-            return res.status(400).json({ error: "You have already applied for this opportunity." });
-        }
-
-        // Insert a new application record
-        const [result] = await db.execute(
-            `INSERT INTO Applications (volunteer_id, opportunity_id, status) VALUES (?, ?, ?)`,
-            [volunteer_id, opportunity_id, 'pending']
-        );
-
-        console.log(`✅ Application submitted by volunteer ${volunteer_id} for opportunity ${opportunity_id}`);
-
-        res.status(201).json({ message: "Application submitted successfully.", application_id: result.insertId });
-    } catch (err) {
-        console.error("❌ Error submitting application:", err);
-        res.status(500).json({ error: "Failed to submit application." });
-    }
-});
-
-// ✅ First: DELETE route
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
@@ -424,23 +526,6 @@ app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// ✅ Then: GET route
-app.get('/api/opportunities', async (req, res) => {
-    try {
-        const [results] = await db.execute(`
-            SELECT opportunity_id, title, description, start_date, end_date, location
-            FROM Opportunities
-            ORDER BY start_date ASC
-        `);
-
-        res.json(results);
-    } catch (err) {
-        console.error("❌ Error fetching opportunities:", err);
-        res.status(500).json({ error: "Failed to fetch opportunities." });
-    }
-});
-
-// ✅ Get a single opportunity by ID
 app.get('/api/opportunities/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -479,7 +564,6 @@ app.get('/api/opportunities/search', async (req, res) => {
     }
 });
 
-
 // File handling setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -491,7 +575,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-
 app.post('/api/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded." });
