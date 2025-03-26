@@ -55,23 +55,95 @@ const oAuth2Client = new google.auth.OAuth2(
     process.env.CLIENT_SECRET,
     process.env.REDIRECT_URI
 );
-oAuth2Client.setCredentials({ refresh_token: process.env.REFRESH_TOKEN });
+
+// Token management functions
+async function getCurrentRefreshToken() {
+    try {
+        const [tokens] = await db.execute('SELECT refresh_token FROM oauth_tokens WHERE id = 1');
+        return tokens[0]?.refresh_token || process.env.REFRESH_TOKEN;
+    } catch (err) {
+        console.error('Error fetching refresh token from DB:', err);
+        return process.env.REFRESH_TOKEN;
+    }
+}
+
+async function updateRefreshToken(newToken) {
+    try {
+        await db.execute(
+            'UPDATE oauth_tokens SET refresh_token = ? WHERE id = 1',
+            [newToken]
+        );
+        console.log('Refresh token updated in database');
+    } catch (err) {
+        console.error('Error updating refresh token:', err);
+    }
+}
+
+async function refreshAccessToken() {
+    try {
+        const currentRefreshToken = await getCurrentRefreshToken();
+        oAuth2Client.setCredentials({ refresh_token: currentRefreshToken });
+        
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        console.log('Access token refreshed');
+        
+        if (credentials.refresh_token) {
+            await updateRefreshToken(credentials.refresh_token);
+            oAuth2Client.setCredentials({
+                refresh_token: credentials.refresh_token
+            });
+        }
+        
+        return credentials.access_token;
+    } catch (err) {
+        console.error('Error refreshing access token:', err);
+        throw err;
+    }
+}
+
+// Initialize with current refresh token
+(async () => {
+    try {
+        const refreshToken = await getCurrentRefreshToken();
+        oAuth2Client.setCredentials({ refresh_token: refreshToken });
+        console.log('OAuth2 client initialized with refresh token');
+    } catch (err) {
+        console.error('Error initializing OAuth2 client:', err);
+    }
+})();
+
+// Scheduled token refresh (every 6 days 23 hours)
+const REFRESH_INTERVAL = (7 * 24 * 60 * 60 * 1000) - (60 * 60 * 1000); // 1 hour before expiration
+setInterval(async () => {
+    try {
+        console.log('Performing scheduled token refresh...');
+        await refreshAccessToken();
+        console.log('Token refresh completed successfully');
+    } catch (err) {
+        console.error('Scheduled token refresh failed:', err);
+    }
+}, REFRESH_INTERVAL);
 
 // Email transporter setup
 async function createTransporter() {
-    const accessToken = await oAuth2Client.getAccessToken();
-
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_USER,
-            clientId: process.env.CLIENT_ID,
-            clientSecret: process.env.CLIENT_SECRET,
-            refreshToken: process.env.REFRESH_TOKEN,
-            accessToken: accessToken,
-        },
-    });
+    try {
+        const accessToken = await refreshAccessToken();
+        
+        return nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                type: 'OAuth2',
+                user: process.env.EMAIL_USER,
+                clientId: process.env.CLIENT_ID,
+                clientSecret: process.env.CLIENT_SECRET,
+                refreshToken: await getCurrentRefreshToken(),
+                accessToken: accessToken,
+            },
+        });
+    } catch (err) {
+        console.error('Error creating transporter:', err);
+        throw err;
+    }
 }
 
 // Authentication middleware
@@ -695,17 +767,6 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
     }
 });
 
-// Health check
-app.get('/', (req, res) => {
-    res.send('Server is running!');
-});
-
-// Start server
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
-
 app.get('/api/applicants/ngo/:ngo_id', authenticateToken, async (req, res) => {
     const { ngo_id } = req.params;
 
@@ -780,4 +841,15 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
         console.error('Error updating application status:', err);
         res.status(500).json({ error: 'Failed to update application status.' });
     }
+});
+
+// Health check
+app.get('/', (req, res) => {
+    res.send('Server is running!');
+});
+
+// Start server
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
