@@ -705,3 +705,79 @@ const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
+app.get('/api/applicants/ngo/:ngo_id', authenticateToken, async (req, res) => {
+    const { ngo_id } = req.params;
+
+    try {
+        // Fetch all opportunities for the given NGO
+        const [opportunities] = await db.execute(`
+            SELECT opportunity_id 
+            FROM Opportunities 
+            WHERE ngo_id = ?
+        `, [ngo_id]);
+
+        if (opportunities.length === 0) {
+            return res.status(404).json({ error: 'No opportunities found for this NGO.' });
+        }
+
+        // Get applicants for each opportunity
+        const opportunityIds = opportunities.map(opportunity => opportunity.opportunity_id);
+        const [applicants] = await db.execute(`
+            SELECT u.user_id, u.name, u.email, v.city, v.skills, a.status, a.opportunity_id
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE a.opportunity_id IN (?)
+        `, [opportunityIds]);
+
+        res.json(applicants);
+    } catch (err) {
+        console.error('Error fetching applicants:', err);
+        res.status(500).json({ error: 'Failed to fetch applicants.' });
+    }
+});
+app.patch('/api/applications/:application_id', authenticateToken, async (req, res) => {
+    const { application_id } = req.params;
+    const { status } = req.body;
+    const validStatuses = ['approved', 'rejected'];
+
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status update.' });
+    }
+
+    try {
+        const [application] = await db.execute(`
+            SELECT a.opportunity_id, a.volunteer_id, u.email, u.name
+            FROM Applications a
+            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE a.application_id = ?
+        `, [application_id]);
+
+        if (application.length === 0) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        await db.execute(`
+            UPDATE Applications 
+            SET status = ? 
+            WHERE application_id = ?
+        `, [status, application_id]);
+
+        // Send email notification
+        const transporter = await createTransporter();
+        await transporter.sendMail({
+            from: `HandsConnect <${process.env.EMAIL_USER}>`,
+            to: application[0].email,
+            subject: `Application ${status.toUpperCase()}`,
+            html: `<p>Dear ${application[0].name},</p>
+                   <p>Your application for the opportunity has been ${status}.</p>`
+        });
+
+        res.json({ message: `Application ${status} successfully.` });
+    } catch (err) {
+        console.error('Error updating application status:', err);
+        res.status(500).json({ error: 'Failed to update application status.' });
+    }
+});
