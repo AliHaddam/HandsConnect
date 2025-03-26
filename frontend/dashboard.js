@@ -230,3 +230,32 @@ function showPreview() {
     window.location.href = "preview.html";
 }
 
+function viewApplicants() {
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1])); // Decode token
+        const ngoId = payload.ngo_id; // Extract NGO ID
+
+        if (!ngoId) {
+            alert("Unable to fetch NGO ID. Please log in again.");
+            return;
+        }
+
+        // Redirect to applicant.html with NGO ID as query parameter
+        window.location.href = `applicant.html?ngo_id=${ngoId}`;
+    } catch (error) {
+        console.error("Error decoding token:", error);
+        alert("Invalid session. Please log in again.");
+        localStorage.removeItem("authToken");
+        window.location.href = "login.html";
+    }
+}
+
+
