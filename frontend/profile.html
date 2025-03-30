@@ -136,40 +136,46 @@
                 }
             }
 
+            // 1. Update the upload handler
             uploadPhotoInput.addEventListener("change", async function () {
                 const file = uploadPhotoInput.files[0];
                 if (!file) return;
 
+                // Validate file type
                 if (!file.type.startsWith('image/')) {
-                    alert('Please upload an image file');
+                    alert('Please upload an image file (JPEG, PNG, etc.)');
                     return;
                 }
 
+                // 2. Create FormData with correct field name
                 const formData = new FormData();
-                formData.append("profilePicture", file);
+                formData.append("file", file); // Must match multer's field name
 
                 try {
                     const response = await fetch("http://localhost:3000/api/upload-profile-picture", {
                         method: "POST",
                         headers: {
-                            'Authorization': `Bearer ${token}`
+                            'Authorization': `Bearer ${token}` // No Content-Type header for FormData!
                         },
                         body: formData
                     });
 
-                    const data = await response.json();
-
+                    // 3. Handle response properly
                     if (!response.ok) {
-                        throw new Error(data.message || 'Upload failed');
+                        const error = await response.json();
+                        throw new Error(error.message || 'Upload failed');
                     }
 
-                    profilePicture.src = data.imageUrl;
+                    const result = await response.json();
+
+                    // 4. Update UI and clear input
+                    profilePicture.src = result.imageUrl + '?t=' + Date.now(); // Cache bust
                     uploadPhotoInput.value = '';
-                    alert('Profile picture updated successfully!');
+                    alert('Profile picture updated!');
 
                 } catch (error) {
-                    console.error('Upload error:', error);
-                    alert(error.message || 'Failed to upload photo');
+                    console.error('Upload failed:', error);
+                    alert(`Upload failed: ${error.message}`);
                 }
             });
 
