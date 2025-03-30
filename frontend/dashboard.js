@@ -1,5 +1,5 @@
 function logout() {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem("token");
     alert("You have been logged out.");
     window.location.href = "login.html";
 }
@@ -55,7 +55,7 @@ function submitOpportunity() {
         return;
     }
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
     if (!token) {
         alert("Session expired. Please log in again.");
         window.location.href = "login.html";
@@ -98,7 +98,7 @@ function submitOpportunity() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 }
@@ -108,7 +108,7 @@ function deleteOpportunity(opportunityId) {
     if (!confirm("Are you sure you want to delete this opportunity?")) return;
 
     const devBypass = true;
-    let token = localStorage.getItem("authToken");
+    let token = localStorage.getItem("token");
 
     let ngoId = null;
 
@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }    
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
 
     if (!token) {
         alert("You must be logged in to access this page.");
@@ -168,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (payload.exp < currentTime) {
             alert("Session expired. Please log in again.");
-            localStorage.removeItem("authToken");
+            localStorage.removeItem("token");
             window.location.href = "login.html";
             return;
         }
@@ -188,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 });
@@ -229,33 +229,4 @@ function showPreview() {
     localStorage.setItem("opportunityPreview", JSON.stringify(previewData));
     window.location.href = "preview.html";
 }
-
-function viewApplicants() {
-    const token = localStorage.getItem("authToken");
-
-    if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "login.html";
-        return;
-    }
-
-    try {
-        const payload = JSON.parse(atob(token.split(".")[1])); // Decode token
-        const ngoId = payload.ngo_id; // Extract NGO ID
-
-        if (!ngoId) {
-            alert("Unable to fetch NGO ID. Please log in again.");
-            return;
-        }
-
-        // Redirect to applicant.html with NGO ID as query parameter
-        window.location.href = `applicant.html?ngo_id=${ngoId}`;
-    } catch (error) {
-        console.error("Error decoding token:", error);
-        alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
-        window.location.href = "login.html";
-    }
-}
-
 
