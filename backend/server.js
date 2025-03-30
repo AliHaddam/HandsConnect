@@ -24,7 +24,7 @@ const logger = winston.createLogger({
 logger.info("Server is starting...");
 
 const app = express();
-app.use("/uploads", express.static("uploads"));
+app.use('/uploads', express.static('uploads'));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
@@ -147,29 +147,24 @@ async function createTransporter() {
 }
 
 // Authentication middleware
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-        console.error("No token provided");
-        return res.status(401).json({ success: false, message: "No token" });
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    // ✅ Allow dev mode
+    if (token === "dev-mode") {
+        req.user = { user_id: 1, role: 'Volunteer' }; // 🔥 Mock user for testing
+        return next();
     }
 
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-        if (err) {
-            console.error("JWT Verification Error:", err.message);
-            return res.status(403).json({ 
-                success: false, 
-                message: "Invalid token",
-                error: err.message 
-            });
-        }
-        
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
         req.user = user;
         next();
     });
-};
+}
 
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
@@ -555,7 +550,6 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 // ===== END APPLY FUNCTIONALITY ===== //
 
 // Opportunities endpoints
-
 app.post('/api/opportunities', async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
 
@@ -645,25 +639,20 @@ app.get('/api/opportunities/search', async (req, res) => {
 // File handling setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, 'uploads'));
+        cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, `${Date.now()}${path.extname(file.originalname)}`);
+        cb(null, Date.now() + path.extname(file.originalname));
     }
 });
 
-const upload = multer({ 
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|gif/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error('Only image files are allowed!'));
+const upload = multer({ storage: storage });
+app.post('/api/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded." });
     }
+    console.log("✅ File uploaded:", req.file.filename);
+    res.json({ message: "File uploaded successfully!", filename: req.file.filename });
 });
 
 app.get('/api/files', (req, res) => {
@@ -854,96 +843,6 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
     }
 });
 
-app.get("/api/profile", authenticateToken, async (req, res) => {
-    try {
-        const [rows] = await pool.query(`
-            SELECT v.phone, v.city, v.skills, v.interests, v.image_url, 
-                   u.name, u.email 
-            FROM Volunteers v
-            JOIN Users u ON v.user_id = u.user_id
-            WHERE v.user_id = ?
-        `, [req.user.user_id]);
-
-        if (rows.length > 0) {
-            const profile = {
-                name: rows[0].name,
-                email: rows[0].email,
-                phone: rows[0].phone,
-                city: rows[0].city,
-                skills: rows[0].skills?.split(',') || [],
-                experiences: rows[0].interests?.split(',') || [], // Map interests to experiences
-                imageUrl: rows[0].image_url || 'default.jpg'
-            };
-            res.json(profile);
-        } else {
-            res.status(404).json({ success: false, message: "Profile not found" });
-        }
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
-});
-
-// Upload profile picture (authenticated)
-app.post("/api/upload-profile-picture", 
-    authenticateToken,
-    upload.single("profilePicture"), 
-    async (req, res) => {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "No file uploaded" });
-        }
-        
-        try {
-            await pool.query(
-                "UPDATE Volunteers SET image_url = ? WHERE user_id = ?", 
-                [`/uploads/${req.file.filename}`, req.user.user_id]
-            );
-            
-            res.json({ 
-                success: true, 
-                imageUrl: `/uploads/${req.file.filename}` 
-            });
-            
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ success: false, message: "Server error" });
-        }
-    }
-);
-
-// Update profile (authenticated)
-app.post("/api/update-profile", authenticateToken, async (req, res) => {
-    const { name, email, phone, city, skills, experiences } = req.body;
-
-    try {
-        // Update Users table
-        await pool.query(
-            "UPDATE Users SET name = ?, email = ? WHERE user_id = ?",
-            [name, email, req.user.user_id]
-        );
-
-        // Update Volunteers table
-        await pool.query(`
-            UPDATE Volunteers 
-            SET phone = ?, city = ?, skills = ?, interests = ?
-            WHERE user_id = ?
-        `, [
-            phone,
-            city,
-            skills.join(','),
-            experiences.join(','), // Map experiences to interests
-            req.user.user_id
-        ]);
-
-        res.json({ success: true, message: "Profile updated successfully!" });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
-});
-
-
 // Health check
 app.get('/', (req, res) => {
     res.send('Server is running!');
@@ -954,3 +853,155 @@ const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
+// ===== VOLUNTEER PROFILE ENDPOINTS ===== //
+
+// Get volunteer profile
+app.get('/api/profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+
+        // Get user and volunteer data in a single query with a JOIN
+        const [results] = await db.execute(`
+            SELECT 
+                u.user_id, u.name, u.email,
+                v.volunteer_id, v.phone, v.city, v.skills, v.interests, 
+                v.image_url, v.Date_of_Birth, v.experiences
+            FROM Users u
+            LEFT JOIN Volunteers v ON u.user_id = v.user_id
+            WHERE u.user_id = ?
+        `, [userId]);
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const profileData = results[0];
+        
+        // Format the response to match what the frontend expects
+        const response = {
+            name: profileData.name,
+            email: profileData.email,
+            phone: profileData.phone || 'Not provided',
+            city: profileData.city || 'Not provided',
+            skills: profileData.skills ? profileData.skills.split(',').map(s => s.trim()) : [],
+            experiences: profileData.experiences ? profileData.experiences.split(',').map(e => e.trim()) : [],
+            imageUrl: profileData.image_url || 'default-profile.jpg',
+            dateOfBirth: profileData.Date_of_Birth ? new Date(profileData.Date_of_Birth).toLocaleDateString() : 'Not provided'
+        };
+
+        res.json(response);
+    } catch (err) {
+        console.error('Error fetching profile:', err);
+        res.status(500).json({ error: 'Failed to fetch profile data' });
+    }
+});
+
+// Update volunteer profile
+app.post('/api/update-profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.user_id;
+        const { name, email, phone, skills, experiences } = req.body;
+
+        // Validate required fields
+        if (!name || !email) {
+            return res.status(400).json({ error: 'Name and email are required' });
+        }
+
+        // Start transaction
+        const connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // Update Users table
+            await connection.execute(
+                'UPDATE Users SET name = ?, email = ? WHERE user_id = ?',
+                [name, email, userId]
+            );
+
+            // Update Volunteers table
+            await connection.execute(
+                `UPDATE Volunteers 
+                 SET phone = ?, skills = ?, experiences = ?
+                 WHERE user_id = ?`,
+                [
+                    phone || null,
+                    skills ? skills.join(', ') : null,
+                    experiences ? experiences.join(', ') : null,
+                    userId
+                ]
+            );
+
+            await connection.commit();
+            connection.release();
+
+            res.json({ message: 'Profile updated successfully' });
+        } catch (transactionError) {
+            await connection.rollback();
+            connection.release();
+            throw transactionError;
+        }
+    } catch (err) {
+        console.error('Error updating profile:', err);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// Upload profile picture
+const profilePicStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'uploads/profile-pictures/';
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const userId = req.user.user_id;
+        const ext = path.extname(file.originalname);
+        cb(null, `profile-${userId}${ext}`);
+    }
+});
+
+const uploadProfilePic = multer({
+    storage: profilePicStorage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    },
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
+
+app.post('/api/upload-profile-picture', 
+    authenticateToken,
+    uploadProfilePic.single('profilePicture'), // Changed from 'profilePicture' to 'file'
+    async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+
+            const userId = req.user.user_id;
+            const imageUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+            // Update the image URL in the database
+            await db.execute(
+                'UPDATE Volunteers SET image_url = ? WHERE user_id = ?',
+                [imageUrl, userId]
+            );
+
+            res.json({ 
+                message: 'Profile picture uploaded successfully',
+                imageUrl 
+            });
+        } catch (err) {
+            console.error('Error:', err);
+            res.status(500).json({ error: err.message || 'Failed to upload profile picture' });
+        }
+    }
+);
