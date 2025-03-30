@@ -71,7 +71,7 @@ app.post("/update-profile", async(req, res) => {
         if (existingProfile.length > 0) {
             // If the profile exists, update it
             await pool.query(
-                "UPDATE volunteer_profiles SET name = ?, email = ?, phone = ?, skills = ?, experiences = ?, imageUrl = ? WHERE id = ?", [name, email, phone, skills.join(","), experiences.join(","), imageUrl, id]
+                "UPDATE Volunteers SET name = ?, email = ?, phone = ?, skills = ?, experiences = ?, imageUrl = ? WHERE id = ?", [name, email, phone, skills.join(","), experiences.join(","), imageUrl, id]
             );
             res.json({ success: true, message: "Profile updated successfully!" });
         } else {

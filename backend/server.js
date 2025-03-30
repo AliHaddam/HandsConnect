@@ -24,7 +24,7 @@ const logger = winston.createLogger({
 logger.info("Server is starting...");
 
 const app = express();
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static("uploads"));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
@@ -76,19 +76,20 @@ async function createTransporter() {
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    // ✅ Allow dev mode
-    if (token === "dev-mode") {
-        req.user = { user_id: 1, role: 'Volunteer' }; // 🔥 Mock user for testing
-        return next();
+    if (!token) {
+        console.error("No token provided in the request");
+        return res.status(401).json({ success: false, message: "No token provided" });
     }
 
-    if (!token) return res.sendStatus(401);
-
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) {
+            console.error("JWT verification error:", err.message);
+            return res.status(403).json({ success: false, message: "Invalid token" });
+        }
+        console.log("Decoded token payload:", user);
         req.user = user;
         next();
     });
@@ -478,6 +479,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 // ===== END APPLY FUNCTIONALITY ===== //
 
 // Opportunities endpoints
+
 app.post('/api/opportunities', async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
 
@@ -567,20 +569,25 @@ app.get('/api/opportunities/search', async (req, res) => {
 // File handling setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, path.join(__dirname, 'uploads'));
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
+        cb(null, `${Date.now()}${path.extname(file.originalname)}`);
     }
 });
 
-const upload = multer({ storage: storage });
-app.post('/api/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded." });
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const filetypes = /jpeg|jpg|png|gif/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+        if (mimetype && extname) {
+            return cb(null, true);
+        }
+        cb(new Error('Only image files are allowed!'));
     }
-    console.log("✅ File uploaded:", req.file.filename);
-    res.json({ message: "File uploaded successfully!", filename: req.file.filename });
 });
 
 app.get('/api/files', (req, res) => {
@@ -694,6 +701,99 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
         res.status(500).json({ error: "Status update failed" });
     }
 });
+
+// Add these routes after existing routes in the second code
+
+// Get volunteer profile (authenticated)
+app.get('/api/profile', authenticateToken, async (req, res) => {
+    try {
+        console.log("Fetching profile for user_id:", req.user.user_id);
+        const [user] = await db.execute(`
+            SELECT u.name, u.email, v.phone, v.skills, v.experiences, v.imageUrl 
+            FROM Users u
+            JOIN Volunteers v ON u.user_id = v.user_id
+            WHERE u.user_id = ?
+        `, [req.user.user_id]);
+
+        console.log("DB query result:", user);
+
+        if (user.length > 0) {
+            const profile = {
+                name: user[0].name,
+                email: user[0].email,
+                phone: user[0].phone,
+                skills: user[0].skills?.split(',') || [],
+                experiences: user[0].experiences?.split(',') || [],
+                imageUrl: user[0].imageUrl || 'default.jpg'
+            };
+            return res.json(profile);
+        }
+        res.status(404).json({ success: false, message: "Profile not found" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+
+
+// Update volunteer profile (authenticated)
+app.post('/api/update-profile', authenticateToken, async (req, res) => {
+    const { name, email, phone, skills, experiences } = req.body;
+
+    try {
+        await db.execute(`
+            UPDATE Users u
+            JOIN Volunteers v ON u.user_id = v.user_id
+            SET 
+                u.name = ?,
+                u.email = ?,
+                v.phone = ?,
+                v.skills = ?,
+                v.experiences = ?
+            WHERE u.user_id = ?
+        `, [
+            name,
+            email,
+            phone,
+            skills.join(','),
+            experiences.join(','),
+            req.user.user_id
+        ]);
+
+        res.json({ success: true, message: "Profile updated successfully!" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Upload profile picture (authenticated)
+app.post('/api/upload-profile-picture', 
+    authenticateToken,
+    upload.single('profilePicture'), 
+    async (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "No file uploaded" });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+        
+        try {
+            await db.execute(`
+                UPDATE Volunteers 
+                SET imageUrl = ? 
+                WHERE user_id = ?
+            `, [imageUrl, req.user.user_id]);
+            
+            res.json({ success: true, imageUrl });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    }
+);
+
 
 // Health check
 app.get('/', (req, res) => {
