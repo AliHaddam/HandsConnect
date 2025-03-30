@@ -2,6 +2,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     const token = localStorage.getItem('token');
     const user_id = localStorage.getItem('user_id');
 
+    console.log("Stored Token:", token);
+    console.log("Token Expiration:", token ? JSON.parse(atob(token.split('.')[1])).exp : "No token");
+
     // Validate token FIRST
     if (!token || !user_id) {
         alert('Please login first!');
@@ -23,25 +26,42 @@ if (profileLink) {
 }
 
 
-    async function fetchProfile() {
-        try {
-            const response = await fetch("http://localhost:3000/api/profile", {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-    
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+async function fetchProfile() {
+    try {
+        const response = await fetch("http://localhost:3000/api/profile", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
-    
-            const data = await response.json();
-            console.log("Profile data received:", data); // Debugging line
-    
-            nameField.textContent = data.name;
-            emailField.textContent = data.email;
-            phoneField.textContent = data.phone || 'Not provided';
-            profilePicture.src = data.imageUrl || "default.jpg";
+        });
+
+        // Handle empty response
+        if (response.status === 204) { // No Content
+            throw new Error('Profile data not available');
+        }
+
+        const responseText = await response.text();
+        
+        // Handle empty response body
+        if (!responseText) {
+            throw new Error('Empty response from server');
+        }
+
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Failed to parse response:', responseText);
+            throw new Error('Invalid server response format');
+        }
+
+        console.log("Profile data:", data);
+
+        // Update DOM elements...
+        nameField.textContent = data.name || 'Not provided';
+        emailField.textContent = data.email || 'Not provided';
+        phoneField.textContent = data.phone || 'Not provided';
+        profilePicture.src = data.imageUrl;
     
             skillsList.innerHTML = data.skills.length > 0 ? 
                 data.skills.map(skill => `<li class="list-group-item">${skill}</li>`).join("") :
@@ -53,7 +73,11 @@ if (profileLink) {
     
         } catch (error) {
             console.error('Profile fetch error:', error);
-            alert('Failed to load profile. Please try again later.');
+            alert(error.message);
+            // Optional: Redirect to login on authentication errors
+            if (error.message.includes('Unauthorized')) {
+                window.location.href = '/login.html';
+            }
         }
     }
     
@@ -150,6 +174,14 @@ if (profileLink) {
         }
     });
 
+    if (token) {
+        const tokenExp = JSON.parse(atob(token.split('.')[1])?.exp);
+        if (tokenExp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          window.location.href = '/login.html';
+          return;
+        }
+      }
     // Initial profile load
     await fetchProfile();
 });

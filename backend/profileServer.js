@@ -32,7 +32,7 @@ app.get("/profile", async(req, res) => {
                 phone: rows[0].phone,
                 skills: rows[0].skills ? rows[0].skills.split(",") : [],
                 experiences: rows[0].experiences ? rows[0].experiences.split(",") : [],
-                imageUrl: rows[0].imageUrl || "default.jpg"
+                imageUrl: rows[0].imageUrl 
             };
             res.json(profile);
         } else {

@@ -147,25 +147,29 @@ async function createTransporter() {
 }
 
 // Authentication middleware
-function authenticateToken(req, res, next) {
+const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-
+    
     if (!token) {
-        console.error("No token provided in the request");
-        return res.status(401).json({ success: false, message: "No token provided" });
+        console.error("No token provided");
+        return res.status(401).json({ success: false, message: "No token" });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
         if (err) {
-            console.error("JWT verification error:", err.message);
-            return res.status(403).json({ success: false, message: "Invalid token" });
+            console.error("JWT Verification Error:", err.message);
+            return res.status(403).json({ 
+                success: false, 
+                message: "Invalid token",
+                error: err.message 
+            });
         }
-        console.log("Decoded token payload:", user);
+        
         req.user = user;
         next();
     });
-}
+};
 
 // Registration endpoint
 app.post('/api/register', async (req, res) => {
@@ -849,63 +853,31 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
         res.status(500).json({ error: 'Failed to update application status.' });
     }
 });
-app.get('/api/profile', authenticateToken, async (req, res) => {
+
+app.get("/api/profile", authenticateToken, async (req, res) => {
     try {
-        console.log("Fetching profile for user_id:", req.user.user_id);
-        const [user] = await db.execute(`
-            SELECT u.name, u.email, v.phone, v.skills, v.experiences, v.imageUrl 
-            FROM Users u
-            JOIN Volunteers v ON u.user_id = v.user_id
-            WHERE u.user_id = ?
+        const [rows] = await pool.query(`
+            SELECT v.phone, v.city, v.skills, v.interests, v.image_url, 
+                   u.name, u.email 
+            FROM Volunteers v
+            JOIN Users u ON v.user_id = u.user_id
+            WHERE v.user_id = ?
         `, [req.user.user_id]);
 
-        console.log("DB query result:", user);
-
-        if (user.length > 0) {
+        if (rows.length > 0) {
             const profile = {
-                name: user[0].name,
-                email: user[0].email,
-                phone: user[0].phone,
-                skills: user[0].skills?.split(',') || [],
-                experiences: user[0].experiences?.split(',') || [],
-                imageUrl: user[0].imageUrl || 'default.jpg'
+                name: rows[0].name,
+                email: rows[0].email,
+                phone: rows[0].phone,
+                city: rows[0].city,
+                skills: rows[0].skills?.split(',') || [],
+                experiences: rows[0].interests?.split(',') || [], // Map interests to experiences
+                imageUrl: rows[0].image_url || 'default.jpg'
             };
-            return res.json(profile);
+            res.json(profile);
+        } else {
+            res.status(404).json({ success: false, message: "Profile not found" });
         }
-        res.status(404).json({ success: false, message: "Profile not found" });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: "Server error" });
-    }
-});
-
-
-
-// Update volunteer profile (authenticated)
-app.post('/api/update-profile', authenticateToken, async (req, res) => {
-    const { name, email, phone, skills, experiences } = req.body;
-
-    try {
-        await db.execute(`
-            UPDATE Users u
-            JOIN Volunteers v ON u.user_id = v.user_id
-            SET 
-                u.name = ?,
-                u.email = ?,
-                v.phone = ?,
-                v.skills = ?,
-                v.experiences = ?
-            WHERE u.user_id = ?
-        `, [
-            name,
-            email,
-            phone,
-            skills.join(','),
-            experiences.join(','),
-            req.user.user_id
-        ]);
-
-        res.json({ success: true, message: "Profile updated successfully!" });
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: "Server error" });
@@ -913,30 +885,63 @@ app.post('/api/update-profile', authenticateToken, async (req, res) => {
 });
 
 // Upload profile picture (authenticated)
-app.post('/api/upload-profile-picture', 
+app.post("/api/upload-profile-picture", 
     authenticateToken,
-    upload.single('profilePicture'), 
+    upload.single("profilePicture"), 
     async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
-
-        const imageUrl = `/uploads/${req.file.filename}`;
         
         try {
-            await db.execute(`
-                UPDATE Volunteers 
-                SET imageUrl = ? 
-                WHERE user_id = ?
-            `, [imageUrl, req.user.user_id]);
+            await pool.query(
+                "UPDATE Volunteers SET image_url = ? WHERE user_id = ?", 
+                [`/uploads/${req.file.filename}`, req.user.user_id]
+            );
             
-            res.json({ success: true, imageUrl });
+            res.json({ 
+                success: true, 
+                imageUrl: `/uploads/${req.file.filename}` 
+            });
+            
         } catch (err) {
             console.error(err);
             res.status(500).json({ success: false, message: "Server error" });
         }
     }
 );
+
+// Update profile (authenticated)
+app.post("/api/update-profile", authenticateToken, async (req, res) => {
+    const { name, email, phone, city, skills, experiences } = req.body;
+
+    try {
+        // Update Users table
+        await pool.query(
+            "UPDATE Users SET name = ?, email = ? WHERE user_id = ?",
+            [name, email, req.user.user_id]
+        );
+
+        // Update Volunteers table
+        await pool.query(`
+            UPDATE Volunteers 
+            SET phone = ?, city = ?, skills = ?, interests = ?
+            WHERE user_id = ?
+        `, [
+            phone,
+            city,
+            skills.join(','),
+            experiences.join(','), // Map experiences to interests
+            req.user.user_id
+        ]);
+
+        res.json({ success: true, message: "Profile updated successfully!" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
 
 
 // Health check
