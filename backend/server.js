@@ -24,7 +24,7 @@ const logger = winston.createLogger({
 logger.info("Server is starting...");
 
 const app = express();
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
@@ -210,14 +210,18 @@ app.post('/api/register', async (req, res) => {
             if (!ngo?.name || !ngo?.description || !ngo?.address) {
                 throw new Error('Missing NGO name, description, or address');
             }
+
             const [ngoResult] = await connection.execute(
-                `INSERT INTO NGOs (name, description, address) 
-                 VALUES (?, ?, ?)`,
-                [ngo.name, ngo.description, ngo.address]
+                `INSERT INTO NGOs (name, description, address, user_id) 
+                 VALUES (?, ?, ?, ?)`,
+                [ngo.name, ngo.description, ngo.address, userId]
             );
+
+            const ngoId = ngoResult.insertId;
+
             await connection.execute(
                 'UPDATE Users SET ngo_id = ? WHERE user_id = ?',
-                [ngoResult.insertId, userId]
+                [ngoId, userId]
             );
         }
 
@@ -639,7 +643,7 @@ app.get('/api/opportunities/search', async (req, res) => {
 // File handling setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        cb(null, '../uploads/');
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname));
@@ -656,7 +660,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 app.get('/api/files', (req, res) => {
-    fs.readdir('uploads/', (err, files) => {
+    fs.readdir('../uploads/', (err, files) => {
         if (err) {
             console.error("❌ Error reading files:", err);
             return res.status(500).json({ error: "Failed to retrieve files." });
@@ -842,6 +846,109 @@ app.patch('/api/applications/:application_id', authenticateToken, async (req, re
         res.status(500).json({ error: 'Failed to update application status.' });
     }
 });
+
+app.get('/api/ngo-profile', authenticateToken, async (req, res) => {
+    try {
+        // Use the ngo_id provided in the query string or from req.user (if you want to enforce matching)
+        const ngoId = req.user.ngo_id;
+
+        if (!ngoId) {
+            return res.status(400).json({ success: false, message: "NGO ID is required" });
+        }
+
+        const [ngo] = await db.execute(`
+        SELECT 
+                NGOs.name, 
+                Users.email, 
+                NGOs.description, 
+                NGOs.address, 
+                NGOs.logo
+            FROM NGOs
+            JOIN Users ON Users.ngo_id = NGOs.ngo_id
+            WHERE NGOs.ngo_id = ?
+      `, [ngoId]);
+
+        if (ngo.length > 0) {
+            const ngoProfile = {
+                name: ngo[0].name,
+                email: ngo[0].email,
+                description: ngo[0].description,
+                address: ngo[0].address,
+                logo: ngo[0].logo
+            };
+            return res.json(ngoProfile);
+        }
+
+        res.status(404).json({ success: false, message: "NGO profile not found" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+app.post('/api/update-ngo-profile', authenticateToken, async (req, res) => {
+    const { name, email, description, address } = req.body;
+    const ngoId = req.user.ngo_id;
+
+    if (!ngoId) {
+        return res.status(400).json({ success: false, message: "NGO ID is required" });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // Update NGO details
+        await connection.execute(`
+            UPDATE NGOs
+            SET name = ?, description = ?, address = ?
+            WHERE ngo_id = ?
+        `, [name, description, address, ngoId]);
+
+        // Update email in Users table
+        await connection.execute(`
+            UPDATE Users
+            SET email = ?
+            WHERE ngo_id = ?
+        `, [email, ngoId]);
+
+        await connection.commit();
+        res.json({ success: true, message: "NGO profile updated successfully!" });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error("Error updating NGO profile:", err);
+        res.status(500).json({ success: false, message: "Server error" });
+
+    } finally {
+        if (connection) connection.release();
+    }
+});
+app.post('/api/upload-ngo-logo',
+    authenticateToken,
+    upload.single('ngoLogo'),
+    async (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "No file uploaded" });
+        }
+
+        const logoUrl = `/uploads/${req.file.filename}`;
+
+        try {
+            await db.execute(`
+          UPDATE NGOs
+          SET logo = ?
+          WHERE ngo_id = ?
+        `, [logoUrl, req.user.ngo_id]);
+
+            res.json({ success: true, logo: logoUrl });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
 
 // Health check
 app.get('/', (req, res) => {
