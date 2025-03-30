@@ -1055,14 +1055,17 @@ app.post('/api/update-profile', authenticateToken, async (req, res) => {
     }
 });
 
-// Upload profile picture
+// 1. First, create the absolute path to the upload directory
+const profilePicsDir = path.join(__dirname, '../uploads/profile-pictures');
+
+// 2. Update multer storage configuration
 const profilePicStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = 'uploads/profile-pictures/';
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(profilePicsDir)) {
+            fs.mkdirSync(profilePicsDir, { recursive: true });
         }
-        cb(null, dir);
+        cb(null, profilePicsDir); // Use absolute path
     },
     filename: (req, file, cb) => {
         const userId = req.user.user_id;
@@ -1085,22 +1088,35 @@ const uploadProfilePic = multer({
     }
 });
 
+// 3. Update the endpoint to match frontend field name
 app.post('/api/upload-profile-picture', 
     authenticateToken,
-    uploadProfilePic.single('profilePicture'), // Changed from 'profilePicture' to 'file'
+    uploadProfilePic.single('file'), // Changed to 'file' to match frontend
     async (req, res) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ error: 'No file uploaded' });
             }
 
-            const userId = req.user.user_id;
+            // Debug log to verify file saving
+            console.log('File saved to:', req.file.path);
+            console.log('File details:', {
+                originalname: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype
+            });
+
+            // Verify file was actually saved
+            if (!fs.existsSync(req.file.path)) {
+                throw new Error('File was not saved to disk');
+            }
+
             const imageUrl = `/uploads/profile-pictures/${req.file.filename}`;
 
             // Update the image URL in the database
             await db.execute(
                 'UPDATE Volunteers SET image_url = ? WHERE user_id = ?',
-                [imageUrl, userId]
+                [imageUrl, req.user.user_id]
             );
 
             res.json({ 
@@ -1108,8 +1124,19 @@ app.post('/api/upload-profile-picture',
                 imageUrl 
             });
         } catch (err) {
-            console.error('Error:', err);
-            res.status(500).json({ error: err.message || 'Failed to upload profile picture' });
+            console.error('Upload error:', err);
+            
+            // If file was saved but other error occurred, clean up
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            
+            res.status(500).json({ 
+                error: err.message || 'Failed to upload profile picture',
+                details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            });
         }
     }
 );
+
+
