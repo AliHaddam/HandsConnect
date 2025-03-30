@@ -25,6 +25,7 @@ logger.info("Server is starting...");
 
 const app = express();
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
