@@ -25,7 +25,6 @@ logger.info("Server is starting...");
 
 const app = express();
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 const morgan = require("morgan");
@@ -57,43 +56,24 @@ const oAuth2Client = new google.auth.OAuth2(
     process.env.REDIRECT_URI
 );
 
-// Token management functions
-async function getCurrentRefreshToken() {
-    try {
-        const [tokens] = await db.execute('SELECT refresh_token FROM oauth_tokens WHERE id = 1');
-        return tokens[0]?.refresh_token || process.env.REFRESH_TOKEN;
-    } catch (err) {
-        console.error('Error fetching refresh token from DB:', err);
-        return process.env.REFRESH_TOKEN;
-    }
-}
+// Initialize with refresh token from .env
+oAuth2Client.setCredentials({
+    refresh_token: process.env.REFRESH_TOKEN
+});
 
-async function updateRefreshToken(newToken) {
-    try {
-        await db.execute(
-            'UPDATE oauth_tokens SET refresh_token = ? WHERE id = 1',
-            [newToken]
-        );
-        console.log('Refresh token updated in database');
-    } catch (err) {
-        console.error('Error updating refresh token:', err);
-    }
-}
+console.log('OAuth2 client initialized with refresh token from environment');
+
 
 async function refreshAccessToken() {
     try {
-        const currentRefreshToken = await getCurrentRefreshToken();
-        oAuth2Client.setCredentials({ refresh_token: currentRefreshToken });
+        // Always use the refresh token from .env
+        oAuth2Client.setCredentials({
+            refresh_token: process.env.REFRESH_TOKEN
+        });
         
+        // Get new access token
         const { credentials } = await oAuth2Client.refreshAccessToken();
         console.log('Access token refreshed');
-        
-        if (credentials.refresh_token) {
-            await updateRefreshToken(credentials.refresh_token);
-            oAuth2Client.setCredentials({
-                refresh_token: credentials.refresh_token
-            });
-        }
         
         return credentials.access_token;
     } catch (err) {
@@ -102,30 +82,8 @@ async function refreshAccessToken() {
     }
 }
 
-// Initialize with current refresh token
-(async () => {
-    try {
-        const refreshToken = await getCurrentRefreshToken();
-        oAuth2Client.setCredentials({ refresh_token: refreshToken });
-        console.log('OAuth2 client initialized with refresh token');
-    } catch (err) {
-        console.error('Error initializing OAuth2 client:', err);
-    }
-})();
 
-// Scheduled token refresh (every 6 days 23 hours)
-const REFRESH_INTERVAL = (7 * 24 * 60 * 60 * 1000) - (60 * 60 * 1000); // 1 hour before expiration
-setInterval(async () => {
-    try {
-        console.log('Performing scheduled token refresh...');
-        await refreshAccessToken();
-        console.log('Token refresh completed successfully');
-    } catch (err) {
-        console.error('Scheduled token refresh failed:', err);
-    }
-}, REFRESH_INTERVAL);
-
-// Email transporter setup
+// Email transporter setup - Simplified
 async function createTransporter() {
     try {
         const accessToken = await refreshAccessToken();
@@ -137,7 +95,7 @@ async function createTransporter() {
                 user: process.env.EMAIL_USER,
                 clientId: process.env.CLIENT_ID,
                 clientSecret: process.env.CLIENT_SECRET,
-                refreshToken: await getCurrentRefreshToken(),
+                refreshToken: process.env.REFRESH_TOKEN, // Direct from .env
                 accessToken: accessToken,
             },
         });
@@ -146,6 +104,7 @@ async function createTransporter() {
         throw err;
     }
 }
+
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
