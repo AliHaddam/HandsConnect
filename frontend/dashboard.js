@@ -21,7 +21,6 @@ function loadOpportunities(ngoId) {
 
                     listItem.innerHTML = `
                         <span>${opportunity.title} - ${new Date(opportunity.start_date).toDateString()} - ${opportunity.location}</span>
-                        <span>Capacity: ${opportunity.capacity}</span>
                         <div>
                             <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.opportunity_id})">Delete</button>
                         </div>
