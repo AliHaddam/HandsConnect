@@ -912,7 +912,7 @@ app.post('/api/upload-ngo-logo',
 
 // Health check
 app.get('/', (req, res) => {
-    res.send('Server is running!');
+    res.sendFile(path.join(__dirname, '../frontend/landingpage.html'));
 });
 
 // Start server
