@@ -63,6 +63,14 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://handsconnect-516m.onrender.com'); // Your Render frontend
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,DELETE,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    next();
+  });
+  
 // OAuth2 setup
 const oAuth2Client = new google.auth.OAuth2(
     process.env.CLIENT_ID,
