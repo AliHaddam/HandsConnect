@@ -45,22 +45,23 @@ app.use(express.json());
 const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:5500',
-    'https://handsconnect-516m.onrender.com' 
-  ];
-  
-  app.use(cors({
+    'https://handsconnect-516m.onrender.com'
+];
+
+app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS not allowed from this origin: ' + origin));
-      }
+        // Allow requests with no origin (like mobile apps or curl or internal server calls)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.error('Blocked by CORS:', origin);
+            callback(new Error('CORS not allowed from this origin: ' + origin));
+        }
     },
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
-  }));
-  
+}));
 
 // OAuth2 setup
 const oAuth2Client = new google.auth.OAuth2(
@@ -83,11 +84,11 @@ async function refreshAccessToken() {
         oAuth2Client.setCredentials({
             refresh_token: process.env.REFRESH_TOKEN
         });
-        
+
         // Get new access token
         const { credentials } = await oAuth2Client.refreshAccessToken();
         console.log('Access token refreshed');
-        
+
         return credentials.access_token;
     } catch (err) {
         console.error('Error refreshing access token:', err);
@@ -100,7 +101,7 @@ async function refreshAccessToken() {
 async function createTransporter() {
     try {
         const accessToken = await refreshAccessToken();
-        
+
         return nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -386,12 +387,12 @@ app.get('/api/opportunities', async (req, res) => {
         const [opportunities] = await db.execute(`
             SELECT 
                 o.*,
-                ${user_id ? 
-                    `EXISTS(
+                ${user_id ?
+                `EXISTS(
                         SELECT 1 FROM Applications 
                         WHERE volunteer_id = ? AND opportunity_id = o.opportunity_id
-                    ) AS has_applied` : 
-                    '0 AS has_applied'}
+                    ) AS has_applied` :
+                '0 AS has_applied'}
             FROM Opportunities o
             ORDER BY o.start_date ASC
         `, user_id ? [user_id] : []);
@@ -406,14 +407,14 @@ app.get('/api/opportunities', async (req, res) => {
 // Handle Apply button submissions
 app.post('/api/applications', authenticateToken, async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
-    
+
     const { opportunity_id } = req.body;
     const user_id = req.user.user_id; // From JWT token
 
     if (!opportunity_id || isNaN(opportunity_id)) {
-        return res.status(400).json({ 
+        return res.status(400).json({
             success: false,
-            error: "Valid opportunity ID is required." 
+            error: "Valid opportunity ID is required."
         });
     }
 
@@ -423,7 +424,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
             'SELECT opportunity_id, title FROM Opportunities WHERE opportunity_id = ?',
             [opportunity_id]
         );
-        
+
         if (opportunity.length === 0) {
             return res.status(404).json({
                 success: false,
@@ -454,9 +455,9 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
         );
 
         if (existing.length > 0) {
-            return res.status(409).json({ 
+            return res.status(409).json({
                 success: false,
-                error: "You've already applied to this opportunity" 
+                error: "You've already applied to this opportunity"
             });
         }
 
@@ -498,7 +499,7 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
             await connection.commit();
             connection.release();
 
-            return res.status(201).json({ 
+            return res.status(201).json({
                 success: true,
                 application_id: result.insertId,
                 message: "Application submitted successfully"
@@ -512,13 +513,13 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 
     } catch (err) {
         console.error("Application error:", err);
-        
+
         let errorMessage = "Failed to submit application";
         if (err.code === 'ER_NO_REFERENCED_ROW_2') {
             errorMessage = "Invalid data reference - please check your account status";
         }
 
-        return res.status(500).json({ 
+        return res.status(500).json({
             success: false,
             error: errorMessage
         });
@@ -957,7 +958,7 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
         }
 
         const profileData = results[0];
-        
+
         // Format the response to match what the frontend expects
         const response = {
             name: profileData.name,
@@ -1061,7 +1062,7 @@ const uploadProfilePic = multer({
 });
 
 // 3. Update the endpoint to match frontend field name
-app.post('/api/upload-profile-picture', 
+app.post('/api/upload-profile-picture',
     authenticateToken,
     uploadProfilePic.single('file'), // Changed to 'file' to match frontend
     async (req, res) => {
@@ -1091,19 +1092,19 @@ app.post('/api/upload-profile-picture',
                 [imageUrl, req.user.user_id]
             );
 
-            res.json({ 
+            res.json({
                 message: 'Profile picture uploaded successfully',
-                imageUrl 
+                imageUrl
             });
         } catch (err) {
             console.error('Upload error:', err);
-            
+
             // If file was saved but other error occurred, clean up
             if (req.file && fs.existsSync(req.file.path)) {
                 fs.unlinkSync(req.file.path);
             }
-            
-            res.status(500).json({ 
+
+            res.status(500).json({
                 error: err.message || 'Failed to upload profile picture',
                 details: process.env.NODE_ENV === 'development' ? err.stack : undefined
             });
