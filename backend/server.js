@@ -42,12 +42,25 @@ app.use(limiter);
 
 // Middleware setup
 app.use(express.json());
-app.use(cors({
-    origin: 'http://127.0.0.1:5500',
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'https://handsconnect-516m.onrender.com' 
+  ];
+  
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS not allowed from this origin: ' + origin));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  }));
+  
 
 // OAuth2 setup
 const oAuth2Client = new google.auth.OAuth2(
