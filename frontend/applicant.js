@@ -1,5 +1,9 @@
 function loadApplicants(ngoId) {
-    fetch(`/api/applicants?ngo_id=${ngoId}`)
+    fetch(`/api/applicants?ngo_id=${ngoId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })      
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById("applicantsList");
@@ -35,7 +39,8 @@ function updateStatus(applicantId, status) {
     fetch(`/api/applicants/${applicantId}/status`, {
         method: "PUT",
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ status })
     })

@@ -1,5 +1,5 @@
 function logout() {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem("token");
     alert("You have been logged out.");
     window.location.href = "login.html";
 }
@@ -54,7 +54,7 @@ function submitOpportunity() {
         return;
     }
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
     if (!token) {
         alert("Session expired. Please log in again.");
         window.location.href = "login.html";
@@ -97,7 +97,7 @@ function submitOpportunity() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 }
@@ -153,7 +153,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }    
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
 
     if (!token) {
         alert("You must be logged in to access this page.");
@@ -167,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (payload.exp < currentTime) {
             alert("Session expired. Please log in again.");
-            localStorage.removeItem("authToken");
+            localStorage.removeItem("token");
             window.location.href = "login.html";
             return;
         }
@@ -187,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 });
@@ -230,7 +230,7 @@ function showPreview() {
 }
 
 function viewApplicants() {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
 
     if (!token) {
         alert("Session expired. Please log in again.");
@@ -252,7 +252,7 @@ function viewApplicants() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 }

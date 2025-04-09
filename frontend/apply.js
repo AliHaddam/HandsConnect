@@ -4,7 +4,7 @@ function getOpportunityId() {
 }
 
 document.addEventListener("DOMContentLoaded", function() {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
     if (!token) {
         alert("Session expired. Please log in again.");
         window.location.href = "login.html";
@@ -18,14 +18,14 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 });
 
 
 function applyForOpportunity() {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
     if (!token) {
         alert("Session expired. Please log in again.");
         window.location.href = "login.html";
