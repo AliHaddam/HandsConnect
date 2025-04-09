@@ -73,7 +73,7 @@
 
             const opportunity = JSON.parse(storedData);
 
-            fetch('http://localhost:3000/api/opportunities', {
+            fetch('/api/opportunities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(opportunity)

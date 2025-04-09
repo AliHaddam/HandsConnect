@@ -6,7 +6,7 @@ function logout() {
 
 // Fetch and display opportunities based on NGO ID
 function loadOpportunities(ngoId) {
-    fetch(`http://localhost:3000/api/opportunities?ngo_id=${ngoId}`)
+    fetch(`/api/opportunities?ngo_id=${ngoId}`)
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById("opportunitiesList");
@@ -74,7 +74,7 @@ function submitOpportunity() {
             ngo_id: ngoId 
         };
 
-        fetch("http://localhost:3000/api/opportunities", {
+        fetch("/api/opportunities", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -126,7 +126,7 @@ function deleteOpportunity(opportunityId) {
         ngoId = payload.ngo_id;
     }
 
-    fetch(`http://localhost:3000/api/opportunities/${opportunityId}`, {
+    fetch(`/api/opportunities/${opportunityId}`, {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`

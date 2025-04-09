@@ -131,7 +131,7 @@
         // Load Users
         async function loadUsers() {
             try {
-                const response = await fetch('http://localhost:3000/api/admin/users');
+                const response = await fetch('/api/admin/users');
                 const users = await response.json();
 
                 document.getElementById('users-list').innerHTML = users.map(user => `
@@ -160,7 +160,7 @@
         // Load NGOs
         async function loadNGOs() {
             try {
-                const response = await fetch('http://localhost:3000/api/admin/ngos/pending');
+                const response = await fetch('/api/admin/ngos/pending');
 
                 if (!response.ok) {
                     const error = await response.json();
@@ -197,7 +197,7 @@
         // Delete User
         async function deleteUser(userId) {
             if (confirm('Are you sure you want to delete this user?')) {
-                await fetch(`http://localhost:3000/api/admin/users/${userId}`, {
+                await fetch(`/api/admin/users/${userId}`, {
                     method: 'DELETE'
                 });
                 loadUsers();
@@ -207,7 +207,7 @@
         // Update Account Status
         async function updateAccountStatus(userId, status) {
             try {
-                const response = await fetch(`http://localhost:3000/api/admin/users/${userId}/status`, {
+                const response = await fetch(`/api/admin/users/${userId}/status`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json'
@@ -225,7 +225,7 @@
 
         // Approve NGO
         async function approveNgo(ngoId) {
-            await fetch(`http://localhost:3000/api/admin/ngos/${ngoId}/approve`, {
+            await fetch(`/api/admin/ngos/${ngoId}/approve`, {
                 method: 'POST'
             });
             loadNGOs();
@@ -234,7 +234,7 @@
         // Reject NGO
         async function rejectNgo(ngoId) {
     try {
-        const response = await fetch(`http://localhost:3000/api/admin/ngos/${ngoId}/reject`, {
+        const response = await fetch(`/api/admin/ngos/${ngoId}/reject`, {
             method: 'POST'
         });
         

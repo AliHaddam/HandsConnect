@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-
 function getOpportunityId() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get("opportunity_id");
@@ -46,7 +44,7 @@ function applyForOpportunity() {
 
     const applicationData = { opportunity_id: opportunityId, full_name: fullName, email, phone };
 
-    fetch("http://localhost:3000/api/applications", {
+    fetch("/api/applications", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

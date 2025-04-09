@@ -1,5 +1,5 @@
 function loadApplicants(ngoId) {
-    fetch(`http://localhost:3000/api/applicants?ngo_id=${ngoId}`)
+    fetch(`/api/applicants?ngo_id=${ngoId}`)
         .then(response => response.json())
         .then(data => {
             const list = document.getElementById("applicantsList");
@@ -32,7 +32,7 @@ function loadApplicants(ngoId) {
 }
 
 function updateStatus(applicantId, status) {
-    fetch(`http://localhost:3000/api/applicants/${applicantId}/status`, {
+    fetch(`/api/applicants/${applicantId}/status`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json"

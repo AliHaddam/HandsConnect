@@ -72,7 +72,7 @@
   // Function to fetch and display NGO profile data
   async function fetchNgoProfile() {
     try {
-      const response = await fetch(`http://localhost:3000/api/ngo-profile?ngo_id=${ngoId}`, {
+      const response = await fetch(`/api/ngo-profile?ngo_id=${ngoId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -113,7 +113,7 @@
     formData.append("ngoLogo", file);
     
     try {
-      const response = await fetch("http://localhost:3000/api/upload-ngo-logo", {
+      const response = await fetch("/api/upload-ngo-logo", {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${token}`
@@ -164,7 +164,7 @@
     };
     
     try {
-      const response = await fetch("http://localhost:3000/api/update-ngo-profile", {
+      const response = await fetch("/api/update-ngo-profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
