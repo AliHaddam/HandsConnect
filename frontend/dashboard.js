@@ -106,8 +106,8 @@ function submitOpportunity() {
 function deleteOpportunity(opportunityId) {
     if (!confirm("Are you sure you want to delete this opportunity?")) return;
 
-    const devBypass = true;
-    let token = localStorage.getItem("authToken");
+    const devBypass = false;
+    let token = localStorage.getItem("token");
 
     let ngoId = null;
 
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
             loadOpportunities(payload.ngo_id);
         }
 
-        fetchFiles();
+        //fetchFiles();
         loadPreviewIntoForm();
 
     } catch (error) {
