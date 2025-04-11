@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 require('dotenv').config();
+
 console.log("JWT Secret:", process.env.JWT_SECRET);
 
 const jwt = require('jsonwebtoken');
@@ -210,7 +211,7 @@ app.post('/api/register', async (req, res) => {
         await connection.commit();
         connection.release();
 
-        const verificationLink = `http://localhost:3000/api/verify-email?token=${verificationToken}`;
+        const verificationLink = `https://handsconnect-516m.onrender.com/api/verify-email?token=${verificationToken}`;
         const transporter = await createTransporter();
 
         await transporter.sendMail({
@@ -337,7 +338,7 @@ app.post('/api/request-password-reset', async (req, res) => {
             [resetToken, resetTokenExpiry, user.user_id]
         );
 
-        const resetLink = `http://localhost:3000/reset-password.html?token=${resetToken}`;
+        const resetLink = `https://handsconnect-516m.onrender.com/reset-password.html?token=${resetToken}`;
         const transporter = await createTransporter();
 
         await transporter.sendMail({
