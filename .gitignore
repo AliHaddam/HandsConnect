@@ -2,6 +2,6 @@
 node_modules/
 backend/.env
 
-backend/error.log
-backend/server.log
+backend/logs/error.log
+backend/logs/server.log
 package-lock.json
