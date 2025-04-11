@@ -44,148 +44,142 @@
   <!-- Include the NGO Profile JavaScript -->
   <script>
     document.addEventListener("DOMContentLoaded", async function () {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    alert("Please login first!");
-    window.location.href = "login.html";
-    return;
-  }
-  
-  // Decode token to extract NGO ID
-  let ngoId;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    ngoId = payload.ngo_id;
-    if (!ngoId) {
-      alert("NGO ID not found. Please log in again.");
-      window.location.href = "login.html";
-      return;
-    }
-  } catch (error) {
-    console.error("Error decoding token:", error);
-    alert("Invalid session. Please log in again.");
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-    return;
-  }
-  
-  // Function to fetch and display NGO profile data
-  async function fetchNgoProfile() {
-    try {
-      const response = await fetch(`/api/ngo-profile?ngo_id=${ngoId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert("Please login first!");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Decode token to extract NGO ID
+      let ngoId;
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        ngoId = payload.ngo_id;
+        if (!ngoId) {
+          alert("NGO ID not found. Please log in again.");
+          window.location.href = "login.html";
+          return;
+        }
+      } catch (error) {
+        console.error("Error decoding token:", error);
+        alert("Invalid session. Please log in again.");
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
+        return;
+      }
+      
+      // Function to fetch and display NGO profile data
+      async function fetchNgoProfile() {
+        try {
+          const response = await fetch(`/api/ngo-profile?ngo_id=${ngoId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log("NGO profile data:", data);
+          
+          document.getElementById("ngo-name").textContent = data.name || "NGO Name";
+          document.getElementById("ngo-email").textContent = data.email || "ngo@example.com";
+          document.getElementById("ngo-description").textContent = data.description || "No description provided.";
+          document.getElementById("ngo-address").textContent = data.address || "No address provided.";
+          document.getElementById("ngo-logo").src = data.logo;
+          
+        } catch (error) {
+          console.error("NGO profile fetch error:", error);
+          alert("Failed to load NGO profile. Please try again later.");
+        }
+      }
+      
+      // Fetch profile on load
+      await fetchNgoProfile();
+      
+      // Handle logo upload
+      const uploadLogoInput = document.getElementById("upload-ngo-logo");
+      uploadLogoInput.addEventListener("change", async function () {
+        const file = uploadLogoInput.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+          alert("Please upload a valid image file.");
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append("ngoLogo", file);
+        
+        try {
+          const response = await fetch("/api/upload-ngo-logo", {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: formData
+          });
+          
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.message || "Logo upload failed");
+          }
+          
+          document.getElementById("ngo-logo").src = data.logo;  // Update logo on page
+          uploadLogoInput.value = "";  // Clear input
+          alert("NGO logo updated successfully!");
+          
+        } catch (error) {
+          console.error("Logo upload error:", error);
+          alert(error.message || "Failed to upload logo.");
         }
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("NGO profile data:", data);
       
-      document.getElementById("ngo-name").textContent = data.name || "NGO Name";
-      document.getElementById("ngo-email").textContent = data.email || "ngo@example.com";
-      document.getElementById("ngo-description").textContent = data.description || "No description provided.";
-      document.getElementById("ngo-address").textContent = data.address || "No address provided.";
-      document.getElementById("ngo-logo").src = data.logo ;
-      
-    } catch (error) {
-      console.error("NGO profile fetch error:", error);
-      alert("Failed to load NGO profile. Please try again later.");
-    }
-  }
-  
-  // Fetch profile on load
-  await fetchNgoProfile();
-  
-  // Handle logo upload
-  const uploadLogoInput = document.getElementById("upload-ngo-logo");
-  uploadLogoInput.addEventListener("change", async function () {
-    const file = uploadLogoInput.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-      alert("Please upload a valid image file.");
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append("ngoLogo", file);
-    
-    try {
-      const response = await fetch("/api/upload-ngo-logo", {
-        method: "POST",
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+      // Handle editing the NGO profile, keeping the email non-editable
+      document.getElementById("edit-ngo-btn").addEventListener("click", async function () {
+        // Retrieve current values from the DOM
+        const currentName = document.getElementById("ngo-name").textContent;
+        const currentEmail = document.getElementById("ngo-email").textContent; // Email remains unchanged
+        const currentDescription = document.getElementById("ngo-description").textContent;
+        const currentAddress = document.getElementById("ngo-address").textContent;
+        
+        // Use prompts for updating fields, except email which remains unchanged
+        const newName = prompt("Enter NGO name:", currentName) || currentName;
+        // Email is not editable so we reuse the current value.
+        const newDescription = prompt("Enter NGO description:", currentDescription) || currentDescription;
+        const newAddress = prompt("Enter NGO address:", currentAddress) || currentAddress;
+        
+        const updatedNgoProfile = {
+          name: newName,
+          email: currentEmail, // Retain current email
+          description: newDescription,
+          address: newAddress
+        };
+        
+        try {
+          const response = await fetch("/api/update-ngo-profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updatedNgoProfile)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Update failed");
+          }
+          
+          await fetchNgoProfile(); // Refresh profile info
+          alert("NGO profile updated successfully!");
+        } catch (error) {
+          console.error("Update error:", error);
+          alert(error.message || "Failed to update NGO profile");
+        }
       });
-      
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Logo upload failed");
-      }
-      
-      document.getElementById("ngo-logo").src = data.logo;  // Update logo on page
-      uploadLogoInput.value = "";  // Clear input
-      alert("NGO logo updated successfully!");
-      
-    } catch (error) {
-      console.error("Logo upload error:", error);
-      alert(error.message || "Failed to upload logo.");
-    }
-  });
-  
-  // Handle editing the NGO profile
-  document.getElementById("edit-ngo-btn").addEventListener("click", async function () {
-    // Retrieve current values from the DOM
-    const currentName = document.getElementById("ngo-name").textContent;
-    const currentEmail = document.getElementById("ngo-email").textContent;
-    const currentDescription = document.getElementById("ngo-description").textContent;
-    const currentAddress = document.getElementById("ngo-address").textContent;
-    
-    // Use prompts to get new values (you may replace with a modal form later)
-    const newName = prompt("Enter NGO name:", currentName) || currentName;
-    const newEmail = prompt("Enter NGO email:", currentEmail) || currentEmail;
-    const newDescription = prompt("Enter NGO description:", currentDescription) || currentDescription;
-    const newAddress = prompt("Enter NGO address:", currentAddress) || currentAddress;
-    
-    // Validate email format
-    if (!/^\S+@\S+\.\S+$/.test(newEmail)) {
-      alert("Please enter a valid email address.");
-      return;
-    }
-    
-    const updatedNgoProfile = {
-      name: newName,
-      email: newEmail,
-      description: newDescription,
-      address: newAddress
-    };
-    
-    try {
-      const response = await fetch("/api/update-ngo-profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedNgoProfile)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Update failed");
-      }
-      
-      await fetchNgoProfile(); // Refresh profile info
-      alert("NGO profile updated successfully!");
-    } catch (error) {
-      console.error("Update error:", error);
-      alert(error.message || "Failed to update NGO profile");
-    }
-  });
-});
+    });
   </script>
 </body>
 </html>
