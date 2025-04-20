@@ -53,3 +53,14 @@ function updateStatus(applicantId, status) {
         console.error("Error updating status:", error);
     });
 }
+document.addEventListener("DOMContentLoaded", () => {
+    const ngoId = localStorage.getItem("ngo_id");
+  
+    if (!ngoId) {
+      console.error("No ngo_id found; cannot load applicants.");
+      return;
+    }
+  
+    loadApplicants(ngoId);
+  });
+  
