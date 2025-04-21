@@ -1,5 +1,5 @@
 function logout() {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem("token");
     alert("You have been logged out.");
     window.location.href = "login.html";
 }
@@ -54,7 +54,7 @@ function submitOpportunity() {
         return;
     }
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
     if (!token) {
         alert("Session expired. Please log in again.");
         window.location.href = "login.html";
@@ -74,7 +74,7 @@ function submitOpportunity() {
             ngo_id: ngoId 
         };
 
-        fetch("http://localhost:3000/api/opportunities", {
+        fetch("/api/opportunities", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -97,7 +97,7 @@ function submitOpportunity() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 }
@@ -106,8 +106,8 @@ function submitOpportunity() {
 function deleteOpportunity(opportunityId) {
     if (!confirm("Are you sure you want to delete this opportunity?")) return;
 
-    const devBypass = true;
-    let token = localStorage.getItem("authToken");
+    const devBypass = false;
+    let token = localStorage.getItem("token");
 
     let ngoId = null;
 
@@ -126,7 +126,7 @@ function deleteOpportunity(opportunityId) {
         ngoId = payload.ngo_id;
     }
 
-    fetch(`http://localhost:3000/api/opportunities/${opportunityId}`, {
+    fetch(`/api/opportunities/${opportunityId}`, {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`
@@ -149,11 +149,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const fakePayload = { ngo_id: 1 };
         loadOpportunities(fakePayload.ngo_id);
         loadPreviewIntoForm();
-        fetchFiles?.();
         return;
     }    
 
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
 
     if (!token) {
         alert("You must be logged in to access this page.");
@@ -167,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (payload.exp < currentTime) {
             alert("Session expired. Please log in again.");
-            localStorage.removeItem("authToken");
+            localStorage.removeItem("token");
             window.location.href = "login.html";
             return;
         }
@@ -181,13 +180,13 @@ document.addEventListener("DOMContentLoaded", () => {
             loadOpportunities(payload.ngo_id);
         }
 
-        fetchFiles();
+        //fetchFiles();
         loadPreviewIntoForm();
 
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 });
@@ -230,7 +229,7 @@ function showPreview() {
 }
 
 function viewApplicants() {
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem("token");
 
     if (!token) {
         alert("Session expired. Please log in again.");
@@ -252,7 +251,7 @@ function viewApplicants() {
     } catch (error) {
         console.error("Error decoding token:", error);
         alert("Invalid session. Please log in again.");
-        localStorage.removeItem("authToken");
+        localStorage.removeItem("token");
         window.location.href = "login.html";
     }
 }

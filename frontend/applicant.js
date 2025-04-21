@@ -1,50 +1,113 @@
 function loadApplicants(ngoId) {
-    fetch(`http://localhost:3000/api/applicants?ngo_id=${ngoId}`)
-        .then(response => response.json())
-        .then(data => {
-            const list = document.getElementById("applicantsList");
-            list.innerHTML = "";
-
-            if (data.length === 0) {
-                list.innerHTML = "<li class='list-group-item'>No applicants found.</li>";
-                return;
-            }
-
-            data.forEach(applicant => {
-                const listItem = document.createElement("li");
-                listItem.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
-
-                listItem.innerHTML = `
-                    <span>${applicant.name} - ${applicant.email}</span>
-                    <span>Status: <strong>${applicant.status}</strong></span>
-                    <div>
-                        <button class="btn btn-success btn-sm" onclick="updateStatus(${applicant.id}, 'Accepted')">Accept</button>
-                        <button class="btn btn-danger btn-sm ms-2" onclick="updateStatus(${applicant.id}, 'Rejected')">Reject</button>
-                    </div>
-                `;
-
-                list.appendChild(listItem);
-            });
-        })
-        .catch(error => {
-            console.error("Error fetching applicants:", error);
-        });
-}
-
-function updateStatus(applicantId, status) {
-    fetch(`http://localhost:3000/api/applicants/${applicantId}/status`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status })
+    fetch(`http://localhost:3000/api/applicants?ngo_id=${ngoId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
-    .then(response => response.json())
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(data => {
-        alert(`Applicant status updated to: ${status}`);
-        location.reload(); // Reload to reflect changes
+      const list = document.getElementById("applicantsList");
+      list.innerHTML = "";
+  
+      if (!Array.isArray(data) || data.length === 0) {
+        list.innerHTML = "<li class='list-group-item'>No applicants found.</li>";
+        return;
+      }
+  
+      data.forEach(applicant => {
+        const listItem = document.createElement("li");
+        listItem.className = "list-group-item d-flex justify-content-between align-items-center";
+  
+        // Build buttons only if they haven't yet been applied
+        let buttonsHTML = "";
+        if (applicant.status !== "Accepted") {
+          buttonsHTML += `
+            <button 
+              class="btn btn-success btn-sm" 
+              onclick="updateStatus(${applicant.id}, 'Accepted')">
+              Accept
+            </button>
+          `;
+        }
+        if (applicant.status !== "Rejected") {
+          buttonsHTML += `
+            <button 
+              class="btn btn-danger btn-sm ms-2" 
+              onclick="updateStatus(${applicant.id}, 'Rejected')">
+              Reject
+            </button>
+          `;
+        }
+  
+        listItem.innerHTML = `
+          <div>
+            <strong>${applicant.name}</strong> — ${applicant.email}
+          </div>
+          <div>
+            <span>Status: <strong>${applicant.status}</strong></span>
+            ${buttonsHTML}
+          </div>
+        `;
+  
+        list.appendChild(listItem);
+      });
     })
-    .catch(error => {
-        console.error("Error updating status:", error);
+    .catch(err => {
+      console.error("Error fetching applicants:", err);
+      document.getElementById("applicantsList").innerHTML =
+        "<li class='list-group-item text-danger'>Failed to load applicants.</li>";
     });
-}
+  }
+  
+  function updateStatus(applicationId, status) {
+    fetch(`http://localhost:3000/api/applications/${applicationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ status })  // now 'Accepted' or 'Rejected'
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      alert(data.message || `Application ${status} successfully.`);
+      // reload the list so that the button disappears
+      loadApplicants(localStorage.getItem('ngo_id'));
+    })
+    .catch(err => {
+      console.error('Error updating status:', err);
+      alert('Could not update status. Check console for details.');
+    });
+  }
+  
+
+document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        alert("Please login first.");
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
+        const ngoId = localStorage.getItem("ngo_id");
+
+        if (!ngoId) {
+            console.error("NGO ID not found in localStorage");
+            return;
+        }
+
+        loadApplicants(ngoId);
+    } catch (err) {
+        console.error("Error decoding token or extracting NGO ID:", err);
+        alert("Session expired or invalid. Please log in again.");
+        localStorage.removeItem("token");
+        window.location.href = "login.html";
+    }
+});

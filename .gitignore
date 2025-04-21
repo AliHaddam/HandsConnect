@@ -5,3 +5,4 @@ backend/.env
 backend/error.log
 backend/server.log
 package-lock.json
+logs/
