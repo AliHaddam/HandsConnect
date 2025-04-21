@@ -765,41 +765,54 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
     }
 });
 
-app.get('/api/applicants/ngo/:ngo_id', authenticateToken, async (req, res) => {
-    const { ngo_id } = req.params;
-
+app.get('/api/applicants', authenticateToken, async (req, res) => {
+    const ngo_id = req.query.ngo_id;
+    console.log("Received request for NGO ID (from query):", ngo_id);
+    if (!ngo_id) {
+        return res.status(400).json({ error: 'ngo_id query parameter is required' });
+      }
     try {
-        // Fetch all opportunities for the given NGO
+        console.log("Will look up opportunities for NGO:", ngo_id);
         const [opportunities] = await db.execute(`
             SELECT opportunity_id 
             FROM Opportunities 
             WHERE ngo_id = ?
         `, [ngo_id]);
 
+        console.log("Found opportunities:", opportunities);
+
         if (opportunities.length === 0) {
             return res.status(404).json({ error: 'No opportunities found for this NGO.' });
         }
 
-        // Get applicants for each opportunity
-        const opportunityIds = opportunities.map(opportunity => opportunity.opportunity_id);
+        const opportunityIds = opportunities.map(op => op.opportunity_id);
+        const placeholders = opportunityIds.map(() => '?').join(',');
+        console.log("Opportunity IDs:", opportunityIds);
+
         const [applicants] = await db.execute(`
-            SELECT u.user_id, u.name, u.email, v.city, v.skills, a.status, a.opportunity_id
+            SELECT a.application_id AS id, u.user_id, u.name, u.email, v.city, v.skills, a.status, a.opportunity_id
             FROM Applications a
             JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
             JOIN Users u ON v.user_id = u.user_id
-            WHERE a.opportunity_id IN (?)
-        `, [opportunityIds]);
+            WHERE a.opportunity_id IN (${placeholders})
+        `, opportunityIds);
+
+        console.log("Applicants:", applicants);
 
         res.json(applicants);
     } catch (err) {
         console.error('Error fetching applicants:', err);
-        res.status(500).json({ error: 'Failed to fetch applicants.' });
+        return res.status(500).json({
+          error: 'Failed to fetch applicants.',
+          details: err.message
+        });
     }
 });
+
 app.patch('/api/applications/:application_id', authenticateToken, async (req, res) => {
     const { application_id } = req.params;
     const { status } = req.body;
-    const validStatuses = ['approved', 'rejected'];
+    const validStatuses = ['Pending','Accepted','Rejected'];
 
     if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: 'Invalid status update.' });

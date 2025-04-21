@@ -157,6 +157,7 @@
     } else if (data.token && data.user && data.user.id) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user_id", data.user.id);
+        localStorage.setItem('ngo_id', data.user.ngo_id);
         alert("Login successful! Redirecting...");
         window.location.href = data.redirect; // Redirect after login
     } else {
