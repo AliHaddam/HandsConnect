@@ -17,11 +17,22 @@ const crypto = require('crypto');
 const winston = require("winston");
 const logger = winston.createLogger({
     level: "info",
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(({ timestamp, level, message }) => {
+            return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+        })
+    ),
     transports: [
         new winston.transports.Console(),
-        new winston.transports.File({ filename: "server.log" }),
+        new winston.transports.File({ filename: "logs/server.log", level: "info" }),
+        new winston.transports.File({ filename: "logs/error.log", level: "error" })
     ],
 });
+
+// Redirect console logs to Winston
+console.log = (msg) => logger.info(msg);
+console.error = (msg) => logger.error(msg);
 logger.info("Server is starting...");
 
 const app = express();

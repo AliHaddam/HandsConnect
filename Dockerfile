@@ -16,6 +16,9 @@ COPY . .
 # Set the working directory to backend for starting the server
 WORKDIR /app/backend
 
+# Ensure logs folder exists inside the container
+RUN mkdir -p /app/backend/logs
+
 # Expose port 3000
 EXPOSE 3000
 
