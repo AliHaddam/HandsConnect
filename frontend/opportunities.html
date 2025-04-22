@@ -59,6 +59,9 @@
         </a>
     </div>
 
+    <div style="text-align: right; margin: 10px;">
+        <a href="dashboard.html" class="btn btn-warning btn-sm">Go to Dashboard (dev)</a>
+    </div>
 
     <div class="header">
         <h1>Volunteering Opportunities</h1>
@@ -152,7 +155,7 @@
 
             try {
 
-                const response = await fetch('/api/applications', {
+                const response = await fetch('http://localhost:3000/api/applications', {
 
                     method: 'POST',
 
@@ -212,30 +215,31 @@
 
         }
 
-        // Filter functions
         function filterOpportunities() {
-            const filters = {
-                name: document.getElementById("searchName").value.toLowerCase(),
-                location: document.getElementById("searchLocation").value.toLowerCase(),
-                date: document.getElementById("searchDate").value,
-                duration: document.getElementById("searchDuration").value,
-                field: document.getElementById("searchField").value
-            };
+    const filters = {
+        title: document.getElementById("searchName").value.toLowerCase(),
+        location: document.getElementById("searchLocation").value.toLowerCase(),
+        "start-date": document.getElementById("searchDate").value,
+        duration: document.getElementById("searchDuration").value,
+        field: document.getElementById("searchField").value
+    };
 
-            document.querySelectorAll(".opportunity-card").forEach(card => {
-                const matches = Object.entries(filters).every(([key, value]) => {
-                    if (!value) return true;
-                    const cardValue = card.getAttribute(`data-${key}`).toLowerCase();
-                    return key === 'date' ? cardValue === value : cardValue.includes(value);
-                });
-                card.style.display = matches ? "block" : "none";
-            });
-        }
+    document.querySelectorAll(".opportunity-card").forEach(card => {
+        const matches = Object.entries(filters).every(([key, value]) => {
+            if (!value) return true;
+            const cardValue = card.getAttribute(`data-${key}`);
+            if (!cardValue) return false;
+            return key === 'start-date' ? cardValue === value : cardValue.toLowerCase().includes(value);
+        });
+        card.style.display = matches ? "block" : "none";
+    });
+}
+
 
         // Load opportunities
         async function loadOpportunities() {
             try {
-                const response = await fetch("/api/opportunities");
+                const response = await fetch("http://localhost:3000/api/opportunities");
                 if (!response.ok) throw new Error('Failed to load opportunities');
 
                 const data = await response.json();
