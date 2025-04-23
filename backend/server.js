@@ -111,12 +111,6 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
-    // ✅ Allow dev mode
-    if (token === "dev-mode") {
-        req.user = { user_id: 1, role: 'Volunteer' }; // 🔥 Mock user for testing
-        return next();
-    }
-
     if (!token) return res.sendStatus(401);
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
@@ -360,7 +354,7 @@ app.post('/api/reset-password', async (req, res) => {
 // ===== APPLY FUNCTIONALITY ===== //
 
 // Enhanced GET /api/opportunities (now includes application status)
-app.get('/api/opportunities', async (req, res) => {
+app.get('/api/opportunities/all', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     let user_id = null;
 
@@ -514,34 +508,22 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 // ===== END APPLY FUNCTIONALITY ===== //
 
 // Opportunities endpoints
-app.post('/api/opportunities', async (req, res) => {
-    const { title, description, start_date, end_date, location, ngo_id } = req.body;
-
-    if (!title || !description || !start_date || !end_date || !location) {
-        return res.status(400).json({ error: "All fields are required." });
-    }
+app.get("/api/opportunities", authenticateToken, async (req, res) => {
+    const ngoId = req.user.ngo_id;
 
     try {
-        const query = `
-            INSERT INTO Opportunities (title, description, start_date, end_date, location, ngo_id)
-            VALUES (?, ?, ?, ?, ?, ?)`;
-        const [result] = await db.execute(query, [title, description, start_date, end_date, location, ngo_id]);
-
-        console.log("✅ Opportunity saved:", {
-            id: result.insertId,
-            title,
-            description,
-            start_date,
-            end_date,
-            location,
-        });
-
-        res.status(201).json({ message: "Opportunity submitted successfully!", id: result.insertId });
+        const [rows] = await db.execute(
+            `SELECT * FROM Opportunities WHERE ngo_id = ?`,
+            [ngoId]
+        );
+        res.json(rows);
     } catch (err) {
-        console.error("❌ Error inserting opportunity:", err);
-        res.status(500).json({ error: "Failed to submit opportunity." });
+        console.error("Database error:", err);
+        res.status(500).json({ message: "Internal server error." });
     }
 });
+
+  
 
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
