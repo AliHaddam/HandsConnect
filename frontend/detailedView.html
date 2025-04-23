@@ -132,6 +132,47 @@ oppId = params.get('id');
           alert(`Could not load opportunity: ${err.message}`);
         });
     }
+    function checkAuth() {
+            const token = localStorage.getItem("token");
+            return token != null;  // Return true if a token exists, otherwise false
+        }
+        function updateAuthUI() {
+    const authLink = document.getElementById('auth-link');
+    if (!authLink) return;
+
+    if (checkAuth()) {
+        // User is authenticated - show "View Profile" link.
+        const userId = localStorage.getItem('user_id');
+        authLink.innerHTML = '<i class="fa-solid fa-user"></i> View Profile';
+        authLink.href = `profile.html?userId=${userId}`;
+
+        // Create and show the log out button if it doesn't already exist
+        let logoutBtn = document.getElementById('logout-btn');
+        if (!logoutBtn) {
+            logoutBtn = document.createElement('button');
+            logoutBtn.id = 'logout-btn';
+            logoutBtn.classList.add('btn', 'btn-danger');
+            logoutBtn.style.marginLeft = '10px';
+            logoutBtn.textContent = 'Log Out';
+            logoutBtn.addEventListener('click', function() {
+                // Remove stored credentials and refresh the page.
+                localStorage.removeItem("token");
+                localStorage.removeItem("user_id");
+                window.location.reload();
+            });
+            authLink.parentElement.appendChild(logoutBtn);
+        }
+    } else {
+        // User not authenticated - show "Login" link.
+        authLink.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Login';
+        authLink.href = 'login.html';
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.remove();
+        }
+    }
+}
+
     async function applyForOpportunity(opportunityId) {
 
 if (!checkAuth()) {
