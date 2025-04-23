@@ -609,8 +609,13 @@ app.get('/api/opportunities/:id', async (req, res) => {
 
     try {
         const [results] = await db.execute(
-            'SELECT * FROM Opportunities WHERE opportunity_id = ?',
-            [id]
+            `SELECT 
+                 o.*, 
+                 n.name AS ngo_name 
+              FROM Opportunities o
+              JOIN NGOs n ON o.ngo_id = n.ngo_id
+              WHERE o.opportunity_id = ?`,
+             [id]
         );
 
         if (results.length === 0) {
@@ -775,45 +780,49 @@ app.patch('/api/admin/users/:id/status', async (req, res) => {
 
 app.get('/api/applicants', authenticateToken, async (req, res) => {
     const ngo_id = req.query.ngo_id;
-    console.log("Received request for NGO ID (from query):", ngo_id);
     if (!ngo_id) {
         return res.status(400).json({ error: 'ngo_id query parameter is required' });
       }
     try {
-        console.log("Will look up opportunities for NGO:", ngo_id);
-        const [opportunities] = await db.execute(`
-            SELECT opportunity_id 
-            FROM Opportunities 
-            WHERE ngo_id = ?
-        `, [ngo_id]);
-
-        console.log("Found opportunities:", opportunities);
-
-        if (opportunities.length === 0) {
+        const [opps] = await db.execute(
+            `SELECT opportunity_id FROM Opportunities WHERE ngo_id = ?`,
+            [ngo_id]
+          );
+          if (opps.length === 0) {
             return res.status(404).json({ error: 'No opportunities found for this NGO.' });
-        }
-
-        const opportunityIds = opportunities.map(op => op.opportunity_id);
-        const placeholders = opportunityIds.map(() => '?').join(',');
-        console.log("Opportunity IDs:", opportunityIds);
-
-        const [applicants] = await db.execute(`
-            SELECT a.application_id AS id, u.user_id, u.name, u.email, v.city, v.skills, a.status, a.opportunity_id
+          }
+          const ids = opps.map(o => o.opportunity_id);
+          const placeholders = ids.map(_ => '?').join(',');
+      
+          // 2. join Applications → Volunteers → Users → Opportunities
+          const [applicants] = await db.execute(
+            `
+            SELECT
+              a.application_id   AS id,
+              u.user_id,
+              u.name,
+              u.email,
+              v.city,
+              v.skills,
+              a.status,
+              o.title            AS opportunity_name
             FROM Applications a
-            JOIN Volunteers v ON a.volunteer_id = v.volunteer_id
-            JOIN Users u ON v.user_id = u.user_id
+            JOIN Volunteers v    ON a.volunteer_id = v.volunteer_id
+            JOIN Users u         ON v.user_id       = u.user_id
+            JOIN Opportunities o ON a.opportunity_id = o.opportunity_id
             WHERE a.opportunity_id IN (${placeholders})
-        `, opportunityIds);
-
-        console.log("Applicants:", applicants);
-
-        res.json(applicants);
+            `,
+            ids
+          );
+      
+          res.json(applicants);
+      
     } catch (err) {
         console.error('Error fetching applicants:', err);
-        return res.status(500).json({
-          error: 'Failed to fetch applicants.',
-          details: err.message
-        });
+       res.status(500).json({
+         error: 'Failed to fetch applicants.',
+         details: err.message
+       });
     }
 });
 
