@@ -5,35 +5,48 @@ function logout() {
 }
 
 // Fetch and display opportunities based on NGO ID
-function loadOpportunities(ngoId) {
-    fetch(`/api/opportunities?ngo_id=${ngoId}`)
-        .then(response => response.json())
-        .then(data => {
-            const list = document.getElementById("opportunitiesList");
-            list.innerHTML = "";
-
-            if (data.length === 0) {
-                list.innerHTML = "<li class='list-group-item'>No opportunities available.</li>";
-            } else {
-                data.forEach(opportunity => {
-                    const listItem = document.createElement("li");
-                    listItem.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
-
-                    listItem.innerHTML = `
-                        <span>${opportunity.title} - ${new Date(opportunity.start_date).toDateString()} - ${opportunity.location}</span>
-                        <div>
-                            <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${opportunity.opportunity_id})">Delete</button>
-                        </div>
-                    `;
-
-                    list.appendChild(listItem);
-                });
-            }
-        })
-        .catch(error => {
-            console.error("Error fetching opportunities:", error);
-        });
-}
+function loadOpportunities() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login first.");
+      return window.location.href = "login.html";
+    }
+  
+    fetch("/api/opportunities", {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      const list = document.getElementById("opportunitiesList");
+      list.innerHTML = "";
+  
+      if (!Array.isArray(data) || data.length === 0) {
+        list.innerHTML = "<li class='list-group-item'>No opportunities available.</li>";
+        return;
+      }
+  
+      data.forEach(op => {
+        const li = document.createElement("li");
+        li.className = "list-group-item d-flex justify-content-between align-items-center";
+        li.innerHTML = `
+          <span>${op.title} — ${new Date(op.start_date).toDateString()} — ${op.location}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteOpportunity(${op.opportunity_id})">
+            Delete
+          </button>`;
+        list.appendChild(li);
+      });
+    })
+    .catch(err => {
+      console.error("Error fetching opportunities:", err);
+      document.getElementById("opportunitiesList").innerHTML =
+        "<li class='list-group-item text-danger'>Failed to load opportunities.</li>";
+    });
+  }
 
 // Redirect user to the apply page
 function redirectToApplyPage(opportunityId) {
@@ -74,7 +87,7 @@ function submitOpportunity() {
             ngo_id: ngoId 
         };
 
-        fetch("/api/opportunities", {
+        fetch("/api/opportunities/ins", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -142,17 +155,7 @@ function deleteOpportunity(opportunityId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const devBypass = true;  // 🔁 Set this to false later
-
-    if (devBypass) {
-        console.warn("🚧 DEV MODE: Token checks are bypassed for dashboard access.");
-        const fakePayload = { ngo_id: 1 };
-        loadOpportunities(fakePayload.ngo_id);
-        loadPreviewIntoForm();
-        fetchFiles?.();
-        return;
-    }    
-
+    loadOpportunities();
     const token = localStorage.getItem("token");
 
     if (!token) {

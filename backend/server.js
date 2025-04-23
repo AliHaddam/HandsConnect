@@ -145,11 +145,6 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
-    // ✅ Allow dev mode
-    if (token === "dev-mode") {
-        req.user = { user_id: 1, role: 'Volunteer' }; // 🔥 Mock user for testing
-        return next();
-    }
 
     if (!token) return res.sendStatus(401);
 
@@ -394,7 +389,7 @@ app.post('/api/reset-password', async (req, res) => {
 // ===== APPLY FUNCTIONALITY ===== //
 
 // Enhanced GET /api/opportunities (now includes application status)
-app.get('/api/opportunities', async (req, res) => {
+app.get('/api/opportunities/all', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     let user_id = null;
 
@@ -548,7 +543,20 @@ app.post('/api/applications', authenticateToken, async (req, res) => {
 // ===== END APPLY FUNCTIONALITY ===== //
 
 // Opportunities endpoints
-app.post('/api/opportunities', async (req, res) => {
+app.get("/api/opportunities", authenticateToken, async (req, res) => {
+    const ngoId = req.user.ngo_id;
+    try {
+        const [rows] = await db.execute(
+            `SELECT * FROM Opportunities WHERE ngo_id = ?`,
+            [ngoId]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("Database error:", err);
+        res.status(500).json({ message: "Internal server error." });
+    }
+});
+app.post('/api/opportunities/ins', async (req, res) => {
     const { title, description, start_date, end_date, location, ngo_id } = req.body;
 
     if (!title || !description || !start_date || !end_date || !location) {
